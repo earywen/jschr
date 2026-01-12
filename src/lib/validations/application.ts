@@ -3,7 +3,8 @@ import { z } from 'zod'
 // Step 1: Identity
 export const identitySchema = z.object({
     characterName: z.string().min(2, 'Le nom doit contenir au moins 2 caractères').max(50),
-    battleTag: z.string().optional(),
+    battleTag: z.string().min(3, 'BattleTag requis (ex: Joueur#1234)'),
+    discordId: z.string().min(2, 'Discord ID requis'),
 })
 
 // Step 2: Character
@@ -12,11 +13,15 @@ export const characterSchema = z.object({
     specId: z.string().min(1, 'Veuillez sélectionner une spécialisation'),
     warcraftlogsLink: z.string().url('URL invalide').optional().or(z.literal('')),
     screenshotUrl: z.string().optional(),
+    avatarUrl: z.string().optional(),
+    raidExperience: z.string().min(20, 'Décrivez votre expérience de raid (minimum 20 caractères)'),
 })
 
 // Step 3: Motivation
 export const motivationSchema = z.object({
-    motivation: z.string().min(50, 'Votre motivation doit contenir au moins 50 caractères').max(2000),
+    aboutMe: z.string().min(20, 'Parlez-nous un peu de vous (minimum 20 caractères)'),
+    whyJSC: z.string().min(20, 'Expliquez ce qui vous attire chez JSC (minimum 20 caractères)'),
+    motivation: z.string().min(50, 'Votre message doit contenir au moins 50 caractères').max(2000),
 })
 
 // Combined schema for full application

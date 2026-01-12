@@ -1,8 +1,9 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { applicationSchema, type ApplicationFormData } from '@/lib/validations/application'
 import { notifyNewCandidate } from '@/lib/discord/notifications'
+import { fetchWarcraftLogsData, updateCandidateWlogsData } from '@/lib/api/warcraftlogs'
 import { revalidatePath } from 'next/cache'
 
 export interface SubmitApplicationResult {
@@ -61,14 +62,22 @@ export async function submitApplication(
     }
 
     // Insert candidate
-    const { data: candidate, error: insertError } = await supabase
+    // Use admin client to bypass RLS strictness during submission
+    const adminSupabase = createAdminClient()
+    const { data: candidate, error: insertError } = await adminSupabase
         .from('candidates')
         .insert({
             name: parsed.data.characterName,
             battle_tag: parsed.data.battleTag || null,
+            discord_id: parsed.data.discordId || null,
             class_id: wowClass.id,
             spec_id: wowSpec.id,
             warcraftlogs_link: parsed.data.warcraftlogsLink || null,
+            screenshot_url: parsed.data.screenshotUrl || null,
+            avatar_url: parsed.data.avatarUrl || null,
+            raid_experience: parsed.data.raidExperience || null,
+            about_me: parsed.data.aboutMe || null,
+            why_jsc: parsed.data.whyJSC || null,
             motivation: parsed.data.motivation,
             user_id: user?.id || null,
             status: 'pending',
@@ -80,16 +89,58 @@ export async function submitApplication(
         console.error('Insert error:', insertError)
         return {
             success: false,
-            error: 'Erreur lors de la soumission. Veuillez réessayer.',
+            error: `Erreur lors de la soumission: ${insertError.message || JSON.stringify(insertError)}`,
+        }
+    }
+
+    // Auto-fetch WarcraftLogs data if link provided
+    let wlogsStats: { ilvl?: number | null, score?: number | null, progress?: string | null, bestPerfAvg?: number | null } = {}
+
+    if (parsed.data.warcraftlogsLink) {
+        try {
+            const wlogsData = await fetchWarcraftLogsData(parsed.data.warcraftlogsLink)
+            wlogsStats = {
+                ilvl: wlogsData.ilvl,
+                score: wlogsData.mythicPlusScore,
+                progress: wlogsData.raidProgress,
+                bestPerfAvg: wlogsData.bestPerfAvg
+            }
+
+            if (wlogsData.bestPerfAvg !== null || wlogsData.mythicPlusScore !== null) {
+                await updateCandidateWlogsData(
+                    candidate.id,
+                    wlogsData.bestPerfAvg,
+                    wlogsData.color,
+                    wlogsData.mythicPlusScore,
+                    wlogsData.ilvl ?? null,
+                    wlogsData.raidProgress ?? null
+                )
+            }
+        } catch (e) {
+            // Silently fail - WarcraftLogs fetch is not critical
+            console.error('WarcraftLogs auto-fetch failed:', e)
         }
     }
 
     // Send Discord webhook notification
     await notifyNewCandidate(
+        candidate.id,
         parsed.data.characterName,
         getClassNameFromId(parsed.data.classId),
         getSpecNameFromId(parsed.data.specId),
-        parsed.data.motivation
+        parsed.data.raidExperience,
+        parsed.data.aboutMe,
+        parsed.data.whyJSC,
+        parsed.data.motivation,
+        {
+            ilvl: wlogsStats.ilvl,
+            score: wlogsStats.score,
+            progress: wlogsStats.progress,
+            bestPerfAvg: wlogsStats.bestPerfAvg,
+            wlogsLink: parsed.data.warcraftlogsLink,
+            screenshotUrl: parsed.data.screenshotUrl,
+            avatarUrl: parsed.data.avatarUrl
+        }
     )
 
     revalidatePath('/dashboard/candidates')
@@ -108,9 +159,14 @@ function getClassNameFromId(classId: string): string {
         hunter: 'Hunter',
         rogue: 'Rogue',
         priest: 'Priest',
+        'death-knight': 'Death Knight',
+        shaman: 'Shaman',
         mage: 'Mage',
         warlock: 'Warlock',
+        monk: 'Monk',
         druid: 'Druid',
+        'demon-hunter': 'Demon Hunter',
+        evoker: 'Evoker',
     }
     return mapping[classId] || classId
 }
@@ -151,3 +207,86 @@ function getSpecNameFromId(specId: string): string {
 
     return mapping[specName] || specName
 }
+
+
+
+export async function deleteCandidate(candidateId: string): Promise<SubmitApplicationResult> {
+    const supabase = await createClient()
+
+    // 1. Check authentication and role
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        console.log('DeleteCandidate: No user found')
+        return { success: false, error: 'Non authentifié' }
+    }
+
+    // Use admin client to ensure we can read the members table
+    // (RLS might prevent reading user roles efficiently if not configured for self-read)
+    const adminSupabase = createAdminClient()
+    const { data: member } = await adminSupabase
+        .from('members')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (member?.role !== 'gm') {
+        return { success: false, error: 'Action non autorisée (GM uniquement)' }
+    }
+
+    // 2. Delete candidate
+    const { error } = await supabase
+        .from('candidates')
+        .delete()
+        .eq('id', candidateId)
+
+    if (error) {
+        console.error('Delete error:', error)
+        return { success: false, error: 'Erreur lors de la suppression' }
+    }
+
+    revalidatePath('/dashboard/candidates')
+    return { success: true }
+}
+
+export async function deleteCandidates(candidateIds: string[]): Promise<SubmitApplicationResult> {
+    const supabase = await createClient()
+
+    // 1. Check authentication and role
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Non authentifié' }
+    }
+
+    // Use admin client to ensure we can read the members table
+    const adminSupabase = createAdminClient()
+    const { data: member } = await adminSupabase
+        .from('members')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (member?.role !== 'gm') {
+        return { success: false, error: 'Action non autorisée (GM uniquement)' }
+    }
+
+    // 2. Delete candidates
+    const { error } = await supabase
+        .from('candidates')
+        .delete()
+        .in('id', candidateIds)
+
+    if (error) {
+        console.error('Delete error:', error)
+        return { success: false, error: 'Erreur lors de la suppression multiple' }
+    }
+
+    revalidatePath('/dashboard/candidates')
+    return { success: true }
+}
+

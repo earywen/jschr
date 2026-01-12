@@ -3,10 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 interface WoWCharacter {
     name: string
     realm: string
+    realmSlug: string
     level: number
     classId: number
     className: string
     faction: string
+    avatarUrl: string
 }
 
 interface WoWCharacterSummary {
@@ -26,21 +28,31 @@ interface WoWCharacterSummary {
     }
 }
 
-// Map Blizzard class IDs to our internal class slugs
-const CLASS_ID_MAP: Record<number, string> = {
-    1: 'warrior',
-    2: 'paladin',
-    3: 'hunter',
-    4: 'rogue',
-    5: 'priest',
-    6: 'death-knight',
-    7: 'shaman',
-    8: 'mage',
-    9: 'warlock',
-    10: 'monk',
-    11: 'druid',
-    12: 'demon-hunter',
-    13: 'evoker',
+// Fetch avatar URL for a single character
+async function fetchCharacterAvatar(
+    realmSlug: string,
+    characterName: string,
+    accessToken: string
+): Promise<string> {
+    try {
+        const charNameLower = characterName.toLowerCase()
+        const url = `https://eu.api.blizzard.com/profile/wow/character/${realmSlug}/${encodeURIComponent(charNameLower)}/character-media?namespace=profile-eu&locale=en_GB`
+
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        })
+
+        if (response.ok) {
+            const data = await response.json()
+            const avatarAsset = data.assets?.find((a: { key: string; value: string }) => a.key === 'avatar')
+            return avatarAsset?.value || ''
+        }
+    } catch {
+        // Silently fail - character may not have avatar
+    }
+    return ''
 }
 
 export async function GET(request: NextRequest) {
@@ -49,23 +61,11 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error')
 
     if (error) {
-        return new NextResponse(
-            `<html><body><script>
-        window.opener.postMessage({ type: 'battlenet-error', error: '${error}' }, '*');
-        window.close();
-      </script></body></html>`,
-            { headers: { 'Content-Type': 'text/html' } }
-        )
+        return createErrorResponse(error)
     }
 
     if (!code) {
-        return new NextResponse(
-            `<html><body><script>
-        window.opener.postMessage({ type: 'battlenet-error', error: 'Code manquant' }, '*');
-        window.close();
-      </script></body></html>`,
-            { headers: { 'Content-Type': 'text/html' } }
-        )
+        return createErrorResponse('Code manquant')
     }
 
     const clientId = process.env.BATTLENET_CLIENT_ID
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         let characters: WoWCharacter[] = []
         try {
             const wowProfileResponse = await fetch(
-                'https://eu.api.blizzard.com/profile/user/wow?namespace=profile-eu&locale=fr_FR',
+                'https://eu.api.blizzard.com/profile/user/wow?namespace=profile-eu&locale=en_GB',
                 {
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
@@ -129,12 +129,14 @@ export async function GET(request: NextRequest) {
                         if (account.characters) {
                             for (const char of account.characters as WoWCharacterSummary[]) {
                                 characters.push({
-                                    name: char.name,
+                                    name: char.name || '',
                                     realm: char.realm?.name || char.realm?.slug || '',
+                                    realmSlug: char.realm?.slug || '',
                                     level: char.level || 0,
                                     classId: char.playable_class?.id || 0,
                                     className: char.playable_class?.name || '',
                                     faction: char.faction?.type || '',
+                                    avatarUrl: '',
                                 })
                             }
                         }
@@ -144,38 +146,87 @@ export async function GET(request: NextRequest) {
                 // Sort by level descending
                 characters.sort((a, b) => b.level - a.level)
 
-                // Only keep max level characters (top 20)
-                characters = characters.slice(0, 20)
+                // Only keep top 15 characters
+                characters = characters.slice(0, 15)
+
+                // Fetch avatars in parallel for all characters
+                const avatarPromises = characters.map(async (char, index) => {
+                    const avatarUrl = await fetchCharacterAvatar(char.realmSlug, char.name, accessToken)
+                    characters[index].avatarUrl = avatarUrl
+                })
+
+                await Promise.all(avatarPromises)
             }
         } catch (wowError) {
             console.error('WoW profile fetch error:', wowError)
-            // Continue without characters
         }
 
-        // Return success to popup with characters
-        const charactersJson = JSON.stringify(characters).replace(/'/g, "\\'")
+        // Create response data
+        const responseData = {
+            battletag,
+            characters,
+        }
 
+        // Return HTML with inline script that uses postMessage
         return new NextResponse(
-            `<html><body><script>
-        window.opener.postMessage({ 
-          type: 'battlenet-success', 
-          userData: {
-            battletag: '${battletag}',
-            characters: ${charactersJson}
-          }
-        }, '*');
-        window.close();
-      </script></body></html>`,
-            { headers: { 'Content-Type': 'text/html' } }
+            `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Battle.net Login</title>
+</head>
+<body>
+    <p>Connexion réussie, fermeture...</p>
+    <script>
+        (function() {
+            try {
+                var data = ${JSON.stringify(responseData)};
+                if (window.opener) {
+                    window.opener.postMessage({ 
+                        type: 'battlenet-success', 
+                        userData: data
+                    }, window.location.origin);
+                }
+            } catch(e) {
+                console.error('Parse error:', e);
+                if (window.opener) {
+                    window.opener.postMessage({ 
+                        type: 'battlenet-error', 
+                        error: 'Erreur parsing: ' + e.message
+                    }, window.location.origin);
+                }
+            }
+            window.close();
+        })();
+    </script>
+</body>
+</html>`,
+            {
+                headers: {
+                    'Content-Type': 'text/html; charset=utf-8',
+                }
+            }
         )
     } catch (error) {
         console.error('Battle.net OAuth error:', error)
-        return new NextResponse(
-            `<html><body><script>
-        window.opener.postMessage({ type: 'battlenet-error', error: 'Erreur de connexion' }, '*');
-        window.close();
-      </script></body></html>`,
-            { headers: { 'Content-Type': 'text/html' } }
-        )
+        return createErrorResponse('Erreur de connexion')
     }
+}
+
+function createErrorResponse(errorMessage: string): NextResponse {
+    return new NextResponse(
+        `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Erreur</title></head>
+<body>
+    <script>
+        if (window.opener) {
+            window.opener.postMessage({ type: 'battlenet-error', error: '${errorMessage}' }, window.location.origin);
+        }
+        window.close();
+    </script>
+</body>
+</html>`,
+        { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    )
 }

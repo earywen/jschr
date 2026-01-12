@@ -35,4 +35,21 @@ export async function createClient() {
             },
         }
     )
+
+}
+
+export function createAdminClient() {
+    return createServerClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return ''
+                },
+                set(name: string, value: string, options: CookieOptions) { },
+                remove(name: string, options: CookieOptions) { },
+            },
+        }
+    )
 }

@@ -12,18 +12,47 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       candidates: {
         Row: {
+          about_me: string | null
+          avatar_url: string | null
           battle_tag: string | null
           class_id: string
           created_at: string
+          discord_id: string | null
           id: string
           level: number | null
           motivation: string | null
           name: string
           race: string | null
+          raid_experience: string | null
           realm: string | null
           screenshot_url: string | null
           spec_id: string
@@ -31,18 +60,23 @@ export type Database = {
           updated_at: string
           user_id: string | null
           warcraftlogs_link: string | null
+          why_jsc: string | null
           wlogs_color: string | null
           wlogs_score: number | null
         }
         Insert: {
+          about_me?: string | null
+          avatar_url?: string | null
           battle_tag?: string | null
           class_id: string
           created_at?: string
+          discord_id?: string | null
           id?: string
           level?: number | null
           motivation?: string | null
           name: string
           race?: string | null
+          raid_experience?: string | null
           realm?: string | null
           screenshot_url?: string | null
           spec_id: string
@@ -50,18 +84,23 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           warcraftlogs_link?: string | null
+          why_jsc?: string | null
           wlogs_color?: string | null
           wlogs_score?: number | null
         }
         Update: {
+          about_me?: string | null
+          avatar_url?: string | null
           battle_tag?: string | null
           class_id?: string
           created_at?: string
+          discord_id?: string | null
           id?: string
           level?: number | null
           motivation?: string | null
           name?: string
           race?: string | null
+          raid_experience?: string | null
           realm?: string | null
           screenshot_url?: string | null
           spec_id?: string
@@ -69,6 +108,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           warcraftlogs_link?: string | null
+          why_jsc?: string | null
           wlogs_color?: string | null
           wlogs_score?: number | null
         }
@@ -380,6 +420,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       candidate_status: ["pending", "accepted", "rejected", "waitlist"],

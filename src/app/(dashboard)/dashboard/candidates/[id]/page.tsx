@@ -12,6 +12,7 @@ import { NotesList } from '@/components/candidates/notes-list'
 import { VoteButtons } from '@/components/candidates/vote-buttons'
 import { VoteSynthesisCard } from '@/components/candidates/vote-synthesis-card'
 import { WarcraftLogsCard } from '@/components/candidates/warcraftlogs-card'
+import { DeleteCandidateButton } from '@/components/candidates/delete-candidate-button'
 import { formatDistanceToNow, format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
@@ -108,17 +109,18 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                         </p>
                     </div>
                 </div>
+                {isGM && <DeleteCandidateButton candidateId={candidate.id} />}
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Motivation */}
+                    {/* Le mot de la fin / Motivation */}
                     <Card className="border-zinc-800 bg-zinc-900">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-white">
                                 <MessageSquare className="h-5 w-5 text-amber-400" />
-                                Motivation
+                                Le mot de la fin
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -127,6 +129,79 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                             </p>
                         </CardContent>
                     </Card>
+
+                    {/* À propos */}
+                    {candidate.about_me && (
+                        <Card className="border-zinc-800 bg-zinc-900">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-white">
+                                    <User className="h-5 w-5 text-blue-400" />
+                                    À propos
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="whitespace-pre-wrap text-zinc-300">
+                                    {candidate.about_me}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Pourquoi JSC */}
+                    {candidate.why_jsc && (
+                        <Card className="border-zinc-800 bg-zinc-900">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-white">
+                                    <Sword className="h-5 w-5 text-green-400" />
+                                    Pourquoi Jet Set Club ?
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="whitespace-pre-wrap text-zinc-300">
+                                    {candidate.why_jsc}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Expérience de raid */}
+                    {candidate.raid_experience && (
+                        <Card className="border-zinc-800 bg-zinc-900">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-white">
+                                    <Sword className="h-5 w-5 text-red-400" />
+                                    Expérience de raid
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="whitespace-pre-wrap text-zinc-300">
+                                    {candidate.raid_experience}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Screenshot UI */}
+                    {candidate.screenshot_url && (
+                        <Card className="border-zinc-800 bg-zinc-900">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-white">
+                                    <ExternalLink className="h-5 w-5 text-purple-400" />
+                                    Interface de raid
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <a
+                                    href={candidate.screenshot_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-purple-400 hover:underline"
+                                >
+                                    Voir la capture d&apos;écran
+                                </a>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* WarcraftLogs */}
                     {candidate.warcraftlogs_link && (
@@ -192,7 +267,7 @@ export default async function CandidateDetailPage({ params }: PageProps) {
 
                     {/* Member Voting */}
                     {isMemberOrHigher && candidate.status === 'pending' && (
-                        <Card className="border-green-500/30 bg-zinc-900">
+                        <Card id="vote-section" className="border-green-500/30 bg-zinc-900">
                             <CardContent className="pt-6">
                                 <VoteButtons
                                     candidateId={candidate.id}
@@ -232,12 +307,21 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                                     <p className="font-medium text-white">{candidate.battle_tag}</p>
                                 </div>
                             )}
+                            {candidate.discord_id && (
+                                <div>
+                                    <p className="text-xs text-zinc-500">Discord</p>
+                                    <p className="font-medium text-white">{candidate.discord_id}</p>
+                                </div>
+                            )}
                             {/* WarcraftLogs */}
                             {candidate.warcraftlogs_link && (
                                 <WarcraftLogsCard
                                     candidateId={candidate.id}
                                     score={candidate.wlogs_score}
                                     color={candidate.wlogs_color}
+                                    mythicPlusScore={candidate.wlogs_mythic_plus_score}
+                                    ilvl={candidate.wlogs_ilvl}
+                                    raidProgress={candidate.wlogs_raid_progress}
                                     link={candidate.warcraftlogs_link}
                                 />
                             )}

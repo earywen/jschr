@@ -1,4 +1,5 @@
 import { getCandidates, getCandidateStats } from '@/lib/actions/candidates-queries'
+import { getUserRole } from '@/lib/auth/role'
 import { CandidatesList } from '@/components/candidates/candidates-list'
 import { CandidatesStats } from '@/components/candidates/candidates-stats'
 import { CandidatesFilters } from '@/components/candidates/candidates-filters'
@@ -14,9 +15,10 @@ export default async function CandidatesPage({ searchParams }: PageProps) {
     const params = await searchParams
     const status = params.status
 
-    const [candidates, stats] = await Promise.all([
+    const [candidates, stats, user] = await Promise.all([
         getCandidates(status),
         getCandidateStats(),
+        getUserRole(),
     ])
 
     return (
@@ -38,7 +40,7 @@ export default async function CandidatesPage({ searchParams }: PageProps) {
             <CandidatesFilters currentStatus={status} />
 
             {/* List */}
-            <CandidatesList candidates={candidates} />
+            <CandidatesList candidates={candidates} userRole={user?.role} />
         </div>
     )
 }

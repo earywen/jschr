@@ -25,15 +25,18 @@ export async function fetchWarcraftLogsForCandidate(
         return { success: false, error: wlogsData.error }
     }
 
-    if (wlogsData.bestPerfAvg === null) {
-        return { success: false, error: 'Aucune donnée trouvée pour ce personnage' }
+    if (wlogsData.bestPerfAvg === null && wlogsData.mythicPlusScore === null) {
+        return { success: false, error: 'Aucune donnée trouvée pour ce personnage (Raid ou MM+)' }
     }
 
     // Update candidate in database
     const updated = await updateCandidateWlogsData(
         candidateId,
         wlogsData.bestPerfAvg,
-        wlogsData.color
+        wlogsData.color,
+        wlogsData.mythicPlusScore,
+        wlogsData.ilvl ?? null,
+        wlogsData.raidProgress ?? null
     )
 
     if (!updated) {
@@ -44,7 +47,7 @@ export async function fetchWarcraftLogsForCandidate(
 
     return {
         success: true,
-        score: wlogsData.bestPerfAvg,
+        score: wlogsData.bestPerfAvg || undefined,
         color: wlogsData.color,
     }
 }

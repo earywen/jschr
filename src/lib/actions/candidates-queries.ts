@@ -7,6 +7,9 @@ type Candidate = Database['public']['Tables']['candidates']['Row']
 type CandidateStatus = Database['public']['Enums']['candidate_status']
 
 export interface CandidateWithDetails extends Candidate {
+    wlogs_mythic_plus_score?: number | null
+    wlogs_ilvl?: number | null
+    wlogs_raid_progress?: string | null
     wow_class: {
         id: string
         name: string

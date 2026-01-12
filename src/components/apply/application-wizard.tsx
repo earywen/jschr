@@ -26,7 +26,7 @@ import {
     type MotivationFormData,
     type ApplicationFormData,
 } from '@/lib/validations/application'
-import { ChevronLeft, ChevronRight, Send, User, Sword, MessageSquare } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Send, User, Sword, MessageSquare, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -42,10 +42,12 @@ interface WizardProps {
 interface BattleNetCharacter {
     name: string
     realm: string
+    realmSlug: string
     level: number
     classId: number
     className: string
     faction: string
+    avatarUrl: string
 }
 
 // Map Blizzard class names to our internal IDs
@@ -86,19 +88,37 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
     // Step 1 Form
     const step1Form = useForm<IdentityFormData>({
         resolver: zodResolver(identitySchema),
-        defaultValues: formData,
+        defaultValues: {
+            characterName: '',
+            battleTag: '',
+            discordId: '',
+            ...formData
+        },
     })
 
     // Step 2 Form
     const step2Form = useForm<CharacterFormData>({
         resolver: zodResolver(characterSchema),
-        defaultValues: formData,
+        defaultValues: {
+            classId: '',
+            specId: '',
+            warcraftlogsLink: '',
+            screenshotUrl: '',
+            avatarUrl: '',
+            raidExperience: '',
+            ...formData
+        },
     })
 
     // Step 3 Form
     const step3Form = useForm<MotivationFormData>({
         resolver: zodResolver(motivationSchema),
-        defaultValues: formData,
+        defaultValues: {
+            aboutMe: '',
+            whyJSC: '',
+            motivation: '',
+            ...formData
+        },
     })
 
     const selectedClassId = step2Form.watch('classId')
@@ -153,10 +173,15 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
             step2Form.setValue('classId', classSlug)
         }
         setShowCharacterPicker(false)
-        // Auto-generate WarcraftLogs link based on character
-        const realm = char.realm.toLowerCase().replace(/\s+/g, '-').replace(/'/g, '')
-        const wlogsLink = `https://www.warcraftlogs.com/character/eu/${realm}/${char.name.toLowerCase()}`
+        // Auto-generate WarcraftLogs link based on character using realmSlug
+        const realmSlug = char.realmSlug || char.realm.toLowerCase().replace(/\s+/g, '-').replace(/'/g, '')
+        const wlogsLink = `https://www.warcraftlogs.com/character/eu/${realmSlug}/${char.name.toLowerCase()}`
         step2Form.setValue('warcraftlogsLink', wlogsLink)
+
+        // Set avatar URL if available
+        if (char.avatarUrl) {
+            step2Form.setValue('avatarUrl', char.avatarUrl)
+        }
     }
 
     return (
@@ -176,15 +201,35 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                 <button
                                     key={`${char.name}-${char.realm}-${idx}`}
                                     onClick={() => handleSelectCharacter(char)}
-                                    className="flex w-full items-center justify-between rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-left transition-colors hover:border-amber-500 hover:bg-zinc-700"
+                                    className="flex w-full items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-left transition-colors hover:border-amber-500 hover:bg-zinc-700"
                                 >
-                                    <div>
-                                        <p className="font-medium text-white">{char.name}</p>
-                                        <p className="text-sm text-zinc-400">{char.realm} • {char.className}</p>
+                                    {/* Avatar */}
+                                    <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border-2 border-zinc-600">
+                                        {/* Fallback letter - always rendered behind */}
+                                        <div className="absolute inset-0 z-0 flex items-center justify-center bg-zinc-700 text-lg font-bold text-zinc-400">
+                                            {char.name.charAt(0)}
+                                        </div>
+                                        {/* Avatar image - rendered on top if exists */}
+                                        {char.avatarUrl && (
+                                            <img
+                                                src={char.avatarUrl}
+                                                alt={char.name}
+                                                className="relative z-10 h-full w-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).style.display = 'none'
+                                                }}
+                                            />
+                                        )}
                                     </div>
-                                    <div className="text-right">
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-white truncate">{char.name}</p>
+                                        <p className="text-sm text-zinc-400 truncate">{char.realm} • {char.className}</p>
+                                    </div>
+                                    {/* Level & Faction */}
+                                    <div className="text-right flex-shrink-0">
                                         <p className="text-sm text-amber-400">Niv. {char.level}</p>
-                                        <p className="text-xs text-zinc-500">{char.faction}</p>
+                                        <p className="text-xs text-zinc-500">{char.faction === 'HORDE' ? '🔴 Horde' : '🔵 Alliance'}</p>
                                     </div>
                                 </button>
                             ))}
@@ -289,7 +334,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
 
                         <div className="space-y-2">
                             <Label htmlFor="battleTag" className="text-zinc-200">
-                                BattleTag (optionnel)
+                                BattleTag *
                             </Label>
                             <Input
                                 id="battleTag"
@@ -297,6 +342,28 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                 placeholder="Joueur#1234"
                                 className="bg-zinc-950 border-zinc-800 text-white"
                             />
+                            {step1Form.formState.errors.battleTag && (
+                                <p className="text-sm text-red-400">
+                                    {step1Form.formState.errors.battleTag.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="discordId" className="text-zinc-200">
+                                Discord *
+                            </Label>
+                            <Input
+                                id="discordId"
+                                {...step1Form.register('discordId')}
+                                placeholder="Votre ID Discord"
+                                className="bg-zinc-950 border-zinc-800 text-white"
+                            />
+                            {step1Form.formState.errors.discordId && (
+                                <p className="text-sm text-red-400">
+                                    {step1Form.formState.errors.discordId.message}
+                                </p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -324,14 +391,19 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                 <SelectTrigger className="bg-zinc-950 border-zinc-800 text-white">
                                     <SelectValue placeholder="Sélectionnez une classe" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                <SelectContent
+                                    className="bg-zinc-900 border-zinc-800 z-[100]"
+                                    position="popper"
+                                    align="start"
+                                    sideOffset={4}
+                                >
                                     {WOW_CLASSES.map((wowClass) => (
                                         <SelectItem
                                             key={wowClass.id}
                                             value={wowClass.id}
-                                            className="text-white hover:bg-zinc-800"
+                                            className="text-white hover:bg-zinc-800 cursor-pointer"
                                         >
-                                            <span style={{ color: wowClass.color }}>{wowClass.name}</span>
+                                            <span style={{ color: wowClass.color }}>{wowClass.nameFr}</span>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -356,14 +428,19 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                 >
                                     <SelectValue placeholder="Sélectionnez une spécialisation" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                <SelectContent
+                                    className="bg-zinc-900 border-zinc-800 z-[100]"
+                                    position="popper"
+                                    align="start"
+                                    sideOffset={4}
+                                >
                                     {availableSpecs.map((spec) => (
                                         <SelectItem
                                             key={spec.id}
                                             value={spec.id}
-                                            className="text-white hover:bg-zinc-800"
+                                            className="text-white hover:bg-zinc-800 cursor-pointer"
                                         >
-                                            {spec.name} ({spec.role})
+                                            {spec.nameFr}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -391,6 +468,46 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                 </p>
                             )}
                         </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="raidExperience" className="text-zinc-200">
+                                Expérience de raid et historique de guildes *
+                            </Label>
+                            <Textarea
+                                id="raidExperience"
+                                {...step2Form.register('raidExperience')}
+                                placeholder="Résumez votre expérience de raid et votre historique de guildes..."
+                                className="min-h-[100px] bg-zinc-950 border-zinc-800 text-white"
+                            />
+                            {step2Form.formState.errors.raidExperience && (
+                                <p className="text-sm text-red-400">
+                                    {step2Form.formState.errors.raidExperience.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="screenshotUrl" className="text-zinc-200">
+                                    Capture d&apos;écran interface raid (optionnel)
+                                </Label>
+                                <a
+                                    href="https://imgur.com/upload"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs text-amber-500 hover:text-amber-400 transition-colors"
+                                >
+                                    <ExternalLink className="h-3 w-3" />
+                                    Uploader sur Imgur
+                                </a>
+                            </div>
+                            <Input
+                                id="screenshotUrl"
+                                {...step2Form.register('screenshotUrl')}
+                                placeholder="https://imgur.com/..."
+                                className="bg-zinc-950 border-zinc-800 text-white"
+                            />
+                        </div>
                     </CardContent>
                 </Card>
             )}
@@ -399,21 +516,61 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
             {currentStep === 3 && (
                 <Card className="border-zinc-800 bg-zinc-900">
                     <CardHeader>
-                        <CardTitle className="text-white">Motivation</CardTitle>
+                        <CardTitle className="text-white">Votre profil d&apos;aventurier</CardTitle>
                         <CardDescription className="text-zinc-400">
-                            Pourquoi souhaitez-vous rejoindre notre guilde ?
+                            Faites-nous découvrir qui vous êtes !
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="motivation" className="text-zinc-200">
-                                Votre motivation *
+                            <Label htmlFor="aboutMe" className="text-zinc-200">
+                                Parlez-nous un peu de vous ! *
                             </Label>
+                            <p className="text-xs text-zinc-500">
+                                L&apos;âge, ce que vous faites dans la vie et vos intérêts en dehors de jouer à WoW
+                            </p>
+                            <Textarea
+                                id="aboutMe"
+                                {...step3Form.register('aboutMe')}
+                                placeholder="Votre réponse..."
+                                className="min-h-[80px] bg-zinc-950 border-zinc-800 text-white"
+                            />
+                            {step3Form.formState.errors.aboutMe && (
+                                <p className="text-sm text-red-400">
+                                    {step3Form.formState.errors.aboutMe.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="whyJSC" className="text-zinc-200">
+                                Qu&apos;est ce qu&apos;il vous plaît chez Jet Set Club ? *
+                            </Label>
+                            <Textarea
+                                id="whyJSC"
+                                {...step3Form.register('whyJSC')}
+                                placeholder="Votre réponse..."
+                                className="min-h-[80px] bg-zinc-950 border-zinc-800 text-white"
+                            />
+                            {step3Form.formState.errors.whyJSC && (
+                                <p className="text-sm text-red-400">
+                                    {step3Form.formState.errors.whyJSC.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="motivation" className="text-zinc-200">
+                                Le mot de la fin est pour vous ! *
+                            </Label>
+                            <p className="text-xs text-zinc-500">
+                                Exprimez-vous ! Ce message sera affiché en haut de votre candidature sur Discord.
+                            </p>
                             <Textarea
                                 id="motivation"
                                 {...step3Form.register('motivation')}
-                                placeholder="Parlez-nous de vous, de votre expérience, de vos objectifs..."
-                                className="min-h-[200px] bg-zinc-950 border-zinc-800 text-white"
+                                placeholder="C'est votre chance de capter notre attention..."
+                                className="min-h-[120px] bg-zinc-950 border-zinc-800 text-white"
                             />
                             {step3Form.formState.errors.motivation && (
                                 <p className="text-sm text-red-400">

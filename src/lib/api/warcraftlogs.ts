@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 interface WarcraftLogsCharacter {
     name: string
@@ -9,6 +9,9 @@ interface WarcraftLogsCharacter {
 interface WarcraftLogsData {
     bestPerfAvg: number | null
     medianPerfAvg: number | null
+    mythicPlusScore: number | null
+    ilvl: number | null
+    raidProgress: string | null
     bestParses: Array<{
         encounterName: string
         spec: string
@@ -79,6 +82,7 @@ function getPercentileColor(percentile: number): string {
     return '#666666' // Gray
 }
 
+
 // Query WarcraftLogs GraphQL API
 export async function fetchWarcraftLogsData(
     warcraftlogsUrl: string
@@ -89,6 +93,9 @@ export async function fetchWarcraftLogsData(
         return {
             bestPerfAvg: null,
             medianPerfAvg: null,
+            mythicPlusScore: null,
+            ilvl: null,
+            raidProgress: null,
             bestParses: [],
             color: '#666666',
             error: 'URL WarcraftLogs invalide',
@@ -101,20 +108,26 @@ export async function fetchWarcraftLogsData(
         return {
             bestPerfAvg: null,
             medianPerfAvg: null,
+            mythicPlusScore: null,
+            ilvl: null,
+            raidProgress: null,
             bestParses: [],
             color: '#666666',
             error: 'Impossible de se connecter à WarcraftLogs',
         }
     }
 
-    // Use allStars to get overall performance instead of specific zone
+    // Use zoneRankings with aliases to get both Raid (zone 44) and Mythic+ (zone 45) data
+    // Zone 44: Manaforge Omega (Current Raid - Season 3)
+    // Zone 45: Season 3 Mythic+
     const query = `
     query CharacterData($name: String!, $serverSlug: String!, $serverRegion: String!) {
       characterData {
         character(name: $name, serverSlug: $serverSlug, serverRegion: $serverRegion) {
           name
           classID
-          zoneRankings
+          mythicPlusScores: zoneRankings(zoneID: 45, metric: playerscore)
+          raidRankings: zoneRankings(zoneID: 44)
         }
       }
     }
@@ -132,7 +145,7 @@ export async function fetchWarcraftLogsData(
                 variables: {
                     name: character.name,
                     serverSlug: character.serverSlug,
-                    serverRegion: character.serverRegion,
+                    serverRegion: character.serverRegion.toUpperCase(),
                 },
             }),
         })
@@ -142,6 +155,9 @@ export async function fetchWarcraftLogsData(
             return {
                 bestPerfAvg: null,
                 medianPerfAvg: null,
+                mythicPlusScore: null,
+                ilvl: null,
+                raidProgress: null,
                 bestParses: [],
                 color: '#666666',
                 error: 'Erreur API WarcraftLogs',
@@ -149,25 +165,91 @@ export async function fetchWarcraftLogsData(
         }
 
         const data = await response.json()
-        const rankings = data?.data?.characterData?.character?.zoneRankings
 
-        if (!rankings) {
+        if (data.errors) {
+            console.error('WarcraftLogs GraphQL Errors:', data.errors)
             return {
                 bestPerfAvg: null,
                 medianPerfAvg: null,
+                mythicPlusScore: null,
+                ilvl: null,
+                raidProgress: null,
+                bestParses: [],
+                color: '#666666',
+                error: 'Erreur GraphQL WarcraftLogs',
+            }
+        }
+
+        const characterData = data?.data?.characterData?.character
+
+        if (!characterData) {
+            return {
+                bestPerfAvg: null,
+                medianPerfAvg: null,
+                mythicPlusScore: null,
+                ilvl: null,
+                raidProgress: null,
                 bestParses: [],
                 color: '#666666',
                 error: 'Personnage non trouvé',
             }
         }
 
-        const bestPerfAvg = rankings.bestPerformanceAverage || null
-        const medianPerfAvg = rankings.medianPerformanceAverage || null
+        // Raid Data
+        const raidRankings = characterData?.raidRankings
+        const bestPerfAvg = raidRankings?.bestPerformanceAverage || null
+        const medianPerfAvg = raidRankings?.medianPerformanceAverage || null
+
+        // Extraction iLvl and Progress
+        let ilvl: number | null = null
+        let raidProgress: string | null = null
+
+        if (raidRankings && raidRankings.rankings) {
+            // Calculate iLvl (max of all bestRank.ilvl)
+            const ilvls = raidRankings.rankings
+                .map((r: any) => r.bestRank?.ilvl)
+                .filter((v: any) => typeof v === 'number' && v > 0)
+
+            if (ilvls.length > 0) {
+                ilvl = Math.max(...ilvls)
+            }
+
+            // Calculate Progress (killed bosses)
+            const kills = raidRankings.rankings.filter((r: any) => r.totalKills > 0).length
+            const total = raidRankings.rankings.length // Assume rankings list covers all bosses
+
+            // Difficulty text
+            let diffText = ''
+            if (raidRankings.difficulty === 5) diffText = '(MM)'
+            else if (raidRankings.difficulty === 4) diffText = '(HM)'
+            else if (raidRankings.difficulty === 3) diffText = '(NM)'
+
+            raidProgress = `${kills}/${total} ${diffText}`.trim()
+        }
+
+        // Mythic+ Data
+        const mPlusRankings = characterData?.mythicPlusScores?.rankings
+        let mythicPlusScore = null
+
+        if (mPlusRankings && Array.isArray(mPlusRankings) && mPlusRankings.length > 0) {
+            const totalPoints = mPlusRankings.reduce((sum: number, ranking: any) => {
+                const points = ranking.allStars?.points || 0
+                return sum + points
+            }, 0)
+
+            if (totalPoints > 0) {
+                mythicPlusScore = totalPoints
+            }
+        }
+
         const color = bestPerfAvg ? getPercentileColor(bestPerfAvg) : '#666666'
 
         return {
             bestPerfAvg: bestPerfAvg ? Math.round(bestPerfAvg) : null,
             medianPerfAvg: medianPerfAvg ? Math.round(medianPerfAvg) : null,
+            mythicPlusScore: mythicPlusScore ? Math.round(mythicPlusScore) : null,
+            ilvl,
+            raidProgress,
             bestParses: [],
             color,
         }
@@ -176,6 +258,9 @@ export async function fetchWarcraftLogsData(
         return {
             bestPerfAvg: null,
             medianPerfAvg: null,
+            mythicPlusScore: null,
+            ilvl: null,
+            raidProgress: null,
             bestParses: [],
             color: '#666666',
             error: 'Erreur lors de la récupération des données',
@@ -186,17 +271,23 @@ export async function fetchWarcraftLogsData(
 // Update candidate with WarcraftLogs data
 export async function updateCandidateWlogsData(
     candidateId: string,
-    wlogsScore: number,
-    wlogsColor: string
+    wlogsScore: number | null,
+    wlogsColor: string,
+    mythicPlusScore: number | null,
+    ilvl: number | null,
+    raidProgress: string | null
 ): Promise<boolean> {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await supabase
         .from('candidates')
         .update({
             wlogs_score: wlogsScore,
             wlogs_color: wlogsColor,
-        })
+            wlogs_mythic_plus_score: mythicPlusScore,
+            wlogs_ilvl: ilvl,
+            wlogs_raid_progress: raidProgress
+        } as any)
         .eq('id', candidateId)
 
     return !error
