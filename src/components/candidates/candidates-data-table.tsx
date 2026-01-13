@@ -1,0 +1,993 @@
+'use client'
+
+import * as React from 'react'
+import { useRouter } from 'next/navigation'
+import {
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    useReactTable,
+    type ColumnDef,
+    type ColumnFiltersState,
+    type SortingState,
+    type VisibilityState,
+    type Column,
+} from '@tanstack/react-table'
+import { formatDistanceToNow } from 'date-fns'
+import { fr } from 'date-fns/locale'
+import {
+    ArrowUpDown,
+    ChevronDown,
+    Clock,
+    CheckCircle,
+    XCircle,
+    Pause,
+    Trash2,
+    Eye,
+    MoreHorizontal,
+    Search,
+    Filter,
+    X,
+} from 'lucide-react'
+
+import { CandidateWithDetails } from '@/lib/actions/candidates-queries'
+import { deleteCandidates } from '@/lib/actions/candidates'
+import { cn, getApprovalColor } from '@/lib/utils'
+import { SafeImage } from '@/components/ui/safe-image'
+
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATUS CONFIG
+// ═══════════════════════════════════════════════════════════════════════════
+
+const statusConfig = {
+    pending: {
+        label: 'En Attente',
+        icon: Clock,
+        className: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    },
+    accepted: {
+        label: 'Acceptée',
+        icon: CheckCircle,
+        className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    },
+    rejected: {
+        label: 'Refusée',
+        icon: XCircle,
+        className: 'bg-red-500/10 text-red-400 border-red-500/20',
+    },
+    waitlist: {
+        label: 'Waitlist',
+        icon: Pause,
+        className: 'bg-[#4361EE]/10 text-[#4361EE] border-[#4361EE]/20',
+    },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getMPlusColor(score: number | null | undefined): string {
+    if (!score) return '#94A3B8'
+    if (score >= 3000) return '#ff8000'
+    if (score >= 2500) return '#a335ee'
+    if (score >= 2000) return '#0070dd'
+    if (score >= 1000) return '#1eff00'
+    return '#ffffff'
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILTER HEADER COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface FilterHeaderProps<TData> {
+    column: Column<TData, unknown>
+    title: string
+    options: { value: string; label: string; color?: string }[]
+}
+
+function FilterHeader<TData>({ column, title, options }: FilterHeaderProps<TData>) {
+    const filterValue = column.getFilterValue() as string | undefined
+    const isFiltered = filterValue !== undefined && filterValue !== ''
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                        "hover:bg-white/5 text-[#94A3B8] hover:text-white gap-1",
+                        isFiltered && "text-[#4361EE]"
+                    )}
+                >
+                    {title}
+                    {isFiltered ? (
+                        <Filter className="ml-1 h-3 w-3 fill-current" />
+                    ) : (
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                    )}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+                align="start"
+                className="bg-[#161822] border-white/10 min-w-[160px]"
+            >
+                <DropdownMenuLabel className="text-[#94A3B8] text-xs">
+                    Filtrer par {title.toLowerCase()}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-white/5" />
+                {isFiltered && (
+                    <>
+                        <DropdownMenuItem
+                            onClick={() => column.setFilterValue(undefined)}
+                            className="text-red-400 hover:bg-red-500/10 cursor-pointer"
+                        >
+                            <X className="mr-2 h-4 w-4" />
+                            Effacer le filtre
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/5" />
+                    </>
+                )}
+                {options.map((option) => (
+                    <DropdownMenuItem
+                        key={option.value}
+                        onClick={() => column.setFilterValue(option.value)}
+                        className={cn(
+                            "cursor-pointer",
+                            filterValue === option.value
+                                ? "bg-[#4361EE]/20 text-white"
+                                : "text-white hover:bg-white/5"
+                        )}
+                    >
+                        <span style={{ color: option.color }}>{option.label}</span>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NUMERIC FILTER HEADER COMPONENT (for min value filtering)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface NumericFilterHeaderProps<TData> {
+    column: Column<TData, unknown>
+    title: string
+}
+
+function NumericFilterHeader<TData>({ column, title }: NumericFilterHeaderProps<TData>) {
+    const filterValue = column.getFilterValue() as number | undefined
+    const isFiltered = filterValue !== undefined
+    const [inputValue, setInputValue] = React.useState(filterValue?.toString() ?? '')
+
+    const handleApplyFilter = () => {
+        const num = parseInt(inputValue)
+        if (!isNaN(num) && num > 0) {
+            column.setFilterValue(num)
+        }
+    }
+
+    const handleClearFilter = () => {
+        column.setFilterValue(undefined)
+        setInputValue('')
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleApplyFilter()
+        }
+    }
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                        "hover:bg-white/5 text-[#94A3B8] hover:text-white gap-1",
+                        isFiltered && "text-[#4361EE]"
+                    )}
+                >
+                    {title}
+                    {isFiltered ? (
+                        <>
+                            <span className="text-xs ml-1">≥{filterValue}</span>
+                            <Filter className="ml-1 h-3 w-3 fill-current" />
+                        </>
+                    ) : (
+                        <ArrowUpDown className="ml-1 h-4 w-4" />
+                    )}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+                align="start"
+                className="bg-[#161822] border-white/10 min-w-[200px] p-3"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="space-y-3">
+                    <p className="text-[#94A3B8] text-xs font-medium">
+                        Afficher uniquement ≥
+                    </p>
+                    <div className="flex gap-2">
+                        <Input
+                            type="number"
+                            placeholder="Ex: 3000"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="bg-[#0B0C15] border-white/10 text-white h-8 text-sm"
+                        />
+                        <Button
+                            size="sm"
+                            onClick={handleApplyFilter}
+                            className="bg-[#4361EE] hover:bg-[#4361EE]/80 h-8 px-3"
+                        >
+                            OK
+                        </Button>
+                    </div>
+                    {isFiltered && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearFilter}
+                            className="w-full text-red-400 hover:bg-red-500/10 hover:text-red-400 h-7"
+                        >
+                            <X className="mr-2 h-3 w-3" />
+                            Effacer le filtre
+                        </Button>
+                    )}
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <div className="flex gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => column.toggleSorting(false)}
+                            className="flex-1 text-[#94A3B8] hover:text-white hover:bg-white/5 h-7 text-xs"
+                        >
+                            ↑ Croissant
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => column.toggleSorting(true)}
+                            className="flex-1 text-[#94A3B8] hover:text-white hover:bg-white/5 h-7 text-xs"
+                        >
+                            ↓ Décroissant
+                        </Button>
+                    </div>
+                </div>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COLUMNS DEFINITION
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function createColumns(
+    router: ReturnType<typeof useRouter>,
+    isGM: boolean,
+    onDelete: (id: string) => void,
+    classOptions: { value: string; label: string; color?: string }[],
+    specOptions: { value: string; label: string; color?: string }[]
+): ColumnDef<CandidateWithDetails>[] {
+    const columns: ColumnDef<CandidateWithDetails>[] = []
+
+    // Selection column (GM only) — NO HEADER CHECKBOX
+    if (isGM) {
+        columns.push({
+            id: 'select',
+            header: () => <div className="w-4" />,
+            cell: ({ row }) => (
+                <div className="pl-4">
+                    <Checkbox
+                        checked={row.getIsSelected()}
+                        onCheckedChange={(value) => row.toggleSelected(!!value)}
+                        aria-label="Sélectionner"
+                        className="border-white/20"
+                    />
+                </div>
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        })
+    }
+
+    // Candidate column (Avatar + Name ONLY)
+    columns.push({
+        accessorKey: 'name',
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                className="hover:bg-white/5 text-[#94A3B8] hover:text-white"
+            >
+                Candidat
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({ row }) => {
+            const candidate = row.original
+            return (
+                <div className="flex items-center gap-3 text-left">
+                    <div
+                        className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl"
+                        style={{
+                            border: `2px solid ${candidate.wow_class?.color || '#666'}`,
+                        }}
+                    >
+                        <div
+                            className="absolute inset-0 flex items-center justify-center text-sm font-bold"
+                            style={{
+                                backgroundColor: `${candidate.wow_class?.color}20` || '#333',
+                                color: candidate.wow_class?.color || '#fff',
+                            }}
+                        >
+                            {candidate.name.charAt(0).toUpperCase()}
+                        </div>
+                        {candidate.avatar_url && (
+                            <SafeImage
+                                src={candidate.avatar_url}
+                                alt={candidate.name}
+                                className="relative z-10 h-full w-full object-cover"
+                            />
+                        )}
+                    </div>
+                    <span className="text-sm font-semibold text-white">{candidate.name}</span>
+                </div>
+            )
+        },
+    })
+
+    // Classe column with FILTER dropdown
+    columns.push({
+        id: 'classe',
+        accessorFn: (row) => row.wow_class?.name || '',
+        header: ({ column }) => (
+            <div className="flex justify-center w-full">
+                <FilterHeader column={column} title="Classe" options={classOptions} />
+            </div>
+        ),
+        cell: ({ row }) => {
+            const wowClass = row.original.wow_class
+            return (
+                <div className="text-center">
+                    <span
+                        className="text-sm font-medium"
+                        style={{ color: wowClass?.color || '#94A3B8' }}
+                    >
+                        {wowClass?.name || '—'}
+                    </span>
+                </div>
+            )
+        },
+        filterFn: 'equals',
+    })
+
+    // Spécialisation column with FILTER dropdown
+    columns.push({
+        id: 'spec',
+        accessorFn: (row) => row.wow_spec?.name || '',
+        header: ({ column }) => (
+            <div className="flex justify-center w-full">
+                <FilterHeader column={column} title="Spé" options={specOptions} />
+            </div>
+        ),
+        cell: ({ row }) => {
+            const wowSpec = row.original.wow_spec
+            const wowClass = row.original.wow_class
+            return (
+                <div className="text-center">
+                    <span
+                        className="text-sm"
+                        style={{ color: wowClass?.color || '#94A3B8' }}
+                    >
+                        {wowSpec?.name || '—'}
+                    </span>
+                </div>
+            )
+        },
+        filterFn: 'equals',
+    })
+
+    // iLvl column with NUMERIC filter
+    columns.push({
+        accessorKey: 'wlogs_ilvl',
+        header: ({ column }) => (
+            <div className="flex justify-center w-full">
+                <NumericFilterHeader column={column} title="iLvl" />
+            </div>
+        ),
+        cell: ({ row }) => (
+            <div className="text-center">
+                <span className="text-sm font-mono text-white">
+                    {row.original.wlogs_ilvl || '—'}
+                </span>
+            </div>
+        ),
+        filterFn: (row, id, filterValue) => {
+            const value = row.getValue(id) as number | null
+            if (value === null || value === undefined) return false
+            return value >= (filterValue as number)
+        },
+    })
+
+    // Logs Score column with NUMERIC filter
+    columns.push({
+        accessorKey: 'wlogs_score',
+        header: ({ column }) => (
+            <div className="flex justify-center w-full">
+                <NumericFilterHeader column={column} title="Logs" />
+            </div>
+        ),
+        cell: ({ row }) => (
+            <div className="text-center">
+                <span
+                    className="text-sm font-bold"
+                    style={{ color: row.original.wlogs_color || '#94A3B8' }}
+                >
+                    {row.original.wlogs_score ? Math.round(row.original.wlogs_score) : '—'}
+                </span>
+            </div>
+        ),
+        filterFn: (row, id, filterValue) => {
+            const value = row.getValue(id) as number | null
+            if (value === null || value === undefined) return false
+            return value >= (filterValue as number)
+        },
+    })
+
+    // MM+ Score column with NUMERIC filter
+    columns.push({
+        accessorKey: 'wlogs_mythic_plus_score',
+        header: ({ column }) => (
+            <div className="flex justify-center w-full">
+                <NumericFilterHeader column={column} title="MM+" />
+            </div>
+        ),
+        cell: ({ row }) => {
+            const score = row.original.wlogs_mythic_plus_score
+            return (
+                <div className="text-center">
+                    <span className="text-sm font-bold" style={{ color: getMPlusColor(score) }}>
+                        {score ? Math.round(score) : '—'}
+                    </span>
+                </div>
+            )
+        },
+        filterFn: (row, id, filterValue) => {
+            const value = row.getValue(id) as number | null
+            if (value === null || value === undefined) return false
+            return value >= (filterValue as number)
+        },
+    })
+
+    // Progress column
+    columns.push({
+        accessorKey: 'wlogs_raid_progress',
+        header: () => <div className="text-center text-[#94A3B8] font-semibold">Progress</div>,
+        cell: ({ row }) => (
+            <div className="text-center">
+                <span className="text-[#94A3B8] text-sm">
+                    {row.original.wlogs_raid_progress || '—'}
+                </span>
+            </div>
+        ),
+    })
+
+    // Approval Rate column
+    columns.push({
+        accessorKey: 'approval_rate',
+        header: ({ column }) => (
+            <div className="flex justify-center w-full">
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="hover:bg-white/5 text-[#94A3B8] hover:text-white"
+                >
+                    Approb.
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            </div>
+        ),
+        cell: ({ row }) => {
+            const rate = row.original.approval_rate
+            return (
+                <div className="text-center">
+                    <span
+                        className="italic font-bold text-sm"
+                        style={{ color: getApprovalColor(rate) }}
+                    >
+                        {rate !== undefined ? `${rate}%` : '—'}
+                    </span>
+                </div>
+            )
+        },
+    })
+
+    // Status column with FILTER
+    columns.push({
+        accessorKey: 'status',
+        header: ({ column }) => (
+            <FilterHeader
+                column={column}
+                title="Statut"
+                options={[
+                    { value: 'pending', label: 'En Attente' },
+                    { value: 'accepted', label: 'Acceptée' },
+                    { value: 'rejected', label: 'Refusée' },
+                    { value: 'waitlist', label: 'Waitlist' },
+                ]}
+            />
+        ),
+        cell: ({ row }) => {
+            const status = statusConfig[row.original.status as keyof typeof statusConfig]
+            const Icon = status.icon
+            return (
+                <span
+                    className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+                        status.className
+                    )}
+                >
+                    <Icon className="h-3 w-3" />
+                    {status.label}
+                </span>
+            )
+        },
+        filterFn: 'equals',
+    })
+
+    // Date column
+    columns.push({
+        accessorKey: 'created_at',
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                className="hover:bg-white/5 text-[#94A3B8] hover:text-white"
+            >
+                Date
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({ row }) => (
+            <span className="text-[#94A3B8] text-sm whitespace-nowrap text-left">
+                {formatDistanceToNow(new Date(row.original.created_at), {
+                    addSuffix: true,
+                    locale: fr,
+                })}
+            </span>
+        ),
+    })
+
+    // Actions column
+    columns.push({
+        id: 'actions',
+        enableHiding: false,
+        header: () => null,
+        cell: ({ row }) => {
+            const candidate = row.original
+            return (
+                <div className="text-right pr-4">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-white/5"
+                            >
+                                <span className="sr-only">Menu</span>
+                                <MoreHorizontal className="h-4 w-4 text-[#94A3B8]" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            className="bg-[#161822] border-white/10"
+                        >
+                            <DropdownMenuLabel className="text-[#94A3B8]">
+                                Actions
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5" />
+                            <DropdownMenuItem
+                                onClick={() => router.push(`/dashboard/candidates/${candidate.id}`)}
+                                className="text-white hover:bg-white/5 cursor-pointer"
+                            >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Voir le profil
+                            </DropdownMenuItem>
+                            {isGM && (
+                                <DropdownMenuItem
+                                    onClick={() => onDelete(candidate.id)}
+                                    className="text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Supprimer
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )
+        },
+    })
+
+    return columns
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA TABLE COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface DataTableProps {
+    candidates: CandidateWithDetails[]
+    userRole?: string
+}
+
+export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
+    const router = useRouter()
+    const isGM = userRole === 'gm'
+
+    const [sorting, setSorting] = React.useState<SortingState>([])
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+    const [rowSelection, setRowSelection] = React.useState({})
+    const [globalFilter, setGlobalFilter] = React.useState('')
+
+    const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null)
+    const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
+    const [isDeleting, setIsDeleting] = React.useState(false)
+
+    const handleDelete = (id: string) => {
+        setDeleteTargetId(id)
+        setShowDeleteDialog(true)
+    }
+
+    // Extract unique classes and specs for filters
+    const classOptions = React.useMemo(() => {
+        const classes = new Map<string, { value: string; label: string; color?: string }>()
+        candidates.forEach((c) => {
+            if (c.wow_class?.name) {
+                classes.set(c.wow_class.name, {
+                    value: c.wow_class.name,
+                    label: c.wow_class.name,
+                    color: c.wow_class.color,
+                })
+            }
+        })
+        return Array.from(classes.values()).sort((a, b) => a.label.localeCompare(b.label))
+    }, [candidates])
+
+    const specOptions = React.useMemo(() => {
+        const specs = new Map<string, { value: string; label: string; color?: string }>()
+        candidates.forEach((c) => {
+            if (c.wow_spec?.name) {
+                specs.set(c.wow_spec.name, {
+                    value: c.wow_spec.name,
+                    label: c.wow_spec.name,
+                    color: c.wow_class?.color,
+                })
+            }
+        })
+        return Array.from(specs.values()).sort((a, b) => a.label.localeCompare(b.label))
+    }, [candidates])
+
+    const columns = React.useMemo(
+        () => createColumns(router, isGM, handleDelete, classOptions, specOptions),
+        [router, isGM, classOptions, specOptions]
+    )
+
+    const table = useReactTable({
+        data: candidates,
+        columns,
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        onGlobalFilterChange: setGlobalFilter,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        onColumnVisibilityChange: setColumnVisibility,
+        onRowSelectionChange: setRowSelection,
+        globalFilterFn: 'includesString',
+        state: {
+            sorting,
+            columnFilters,
+            columnVisibility,
+            rowSelection,
+            globalFilter,
+        },
+    })
+
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const selectedIds = selectedRows.map((row) => row.original.id)
+    const activeFiltersCount = columnFilters.length
+
+    const handleBulkDelete = async () => {
+        const idsToDelete = deleteTargetId ? [deleteTargetId] : selectedIds
+        if (idsToDelete.length === 0) return
+
+        setIsDeleting(true)
+        try {
+            const result = await deleteCandidates(idsToDelete)
+            if (result.success) {
+                toast.success(`${idsToDelete.length} candidature(s) supprimée(s)`)
+                setRowSelection({})
+                router.refresh()
+            } else {
+                toast.error(result.error || 'Erreur lors de la suppression')
+            }
+        } catch {
+            toast.error('Une erreur est survenue')
+        } finally {
+            setIsDeleting(false)
+            setShowDeleteDialog(false)
+            setDeleteTargetId(null)
+        }
+    }
+
+    const clearAllFilters = () => {
+        setColumnFilters([])
+        setGlobalFilter('')
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Toolbar */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                {/* Search */}
+                <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+                    <Input
+                        placeholder="Rechercher..."
+                        value={globalFilter ?? ''}
+                        onChange={(e) => setGlobalFilter(e.target.value)}
+                        className="pl-9 bg-[#161822] border-white/5 text-white placeholder:text-[#94A3B8] focus-visible:ring-[#4361EE]/50"
+                    />
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {/* Clear all filters */}
+                    {activeFiltersCount > 0 && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={clearAllFilters}
+                            className="gap-2 bg-[#161822] border-[#4361EE]/30 text-[#4361EE] hover:bg-[#4361EE]/10 hover:text-[#4361EE]"
+                        >
+                            <X className="h-4 w-4" />
+                            Effacer {activeFiltersCount} filtre(s)
+                        </Button>
+                    )}
+
+                    {/* Bulk delete */}
+                    {selectedIds.length > 0 && isGM && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                                setDeleteTargetId(null)
+                                setShowDeleteDialog(true)
+                            }}
+                            className="gap-2 bg-red-600 hover:bg-red-500"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            Supprimer ({selectedIds.length})
+                        </Button>
+                    )}
+
+                    {/* Column visibility */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-[#161822] border-white/5 text-[#94A3B8] hover:bg-white/5 hover:text-white"
+                            >
+                                Colonnes
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            className="bg-[#161822] border-white/10"
+                        >
+                            {table
+                                .getAllColumns()
+                                .filter((column) => column.getCanHide())
+                                .map((column) => {
+                                    const labels: Record<string, string> = {
+                                        name: 'Candidat',
+                                        classe: 'Classe',
+                                        spec: 'Spécialisation',
+                                        wlogs_ilvl: 'iLvl',
+                                        wlogs_score: 'Logs',
+                                        wlogs_mythic_plus_score: 'MM+',
+                                        wlogs_raid_progress: 'Progress',
+                                        approval_rate: 'Approbation',
+                                        status: 'Statut',
+                                        created_at: 'Date',
+                                    }
+                                    return (
+                                        <DropdownMenuCheckboxItem
+                                            key={column.id}
+                                            className="text-white hover:bg-white/5"
+                                            checked={column.getIsVisible()}
+                                            onCheckedChange={(value) =>
+                                                column.toggleVisibility(!!value)
+                                            }
+                                        >
+                                            {labels[column.id] || column.id}
+                                        </DropdownMenuCheckboxItem>
+                                    )
+                                })}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="rounded-3xl border border-white/5 bg-[#161822] overflow-hidden">
+                <Table>
+                    <TableHeader>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow
+                                key={headerGroup.id}
+                                className="border-white/5 hover:bg-transparent"
+                            >
+                                {headerGroup.headers.map((header) => (
+                                    <TableHead
+                                        key={header.id}
+                                        className="text-[#94A3B8] font-semibold h-12 text-left"
+                                    >
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                header.column.columnDef.header,
+                                                header.getContext()
+                                            )}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {table.getRowModel().rows?.length ? (
+                            table.getRowModel().rows.map((row) => (
+                                <TableRow
+                                    key={row.id}
+                                    data-state={row.getIsSelected() && 'selected'}
+                                    className="border-white/5 hover:bg-white/[0.02] cursor-pointer transition-colors h-14"
+                                    onClick={() =>
+                                        router.push(`/dashboard/candidates/${row.original.id}`)
+                                    }
+                                >
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell
+                                            key={cell.id}
+                                            className="py-3 text-left"
+                                            onClick={(e) => {
+                                                if (
+                                                    cell.column.id === 'select' ||
+                                                    cell.column.id === 'actions'
+                                                ) {
+                                                    e.stopPropagation()
+                                                }
+                                            }}
+                                        >
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext()
+                                            )}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={columns.length}
+                                    className="h-24 text-center text-[#94A3B8]"
+                                >
+                                    Aucune candidature trouvée.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-[#94A3B8]">
+                    {table.getFilteredRowModel().rows.length} candidature(s)
+                    {selectedIds.length > 0 && ` • ${selectedIds.length} sélectionnée(s)`}
+                </p>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                        className="bg-[#161822] border-white/5 text-[#94A3B8] hover:bg-white/5 hover:text-white disabled:opacity-50"
+                    >
+                        Précédent
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                        className="bg-[#161822] border-white/5 text-[#94A3B8] hover:bg-white/5 hover:text-white disabled:opacity-50"
+                    >
+                        Suivant
+                    </Button>
+                </div>
+            </div>
+
+            {/* Delete Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent className="bg-[#161822] border-white/10 text-white">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-[#94A3B8]">
+                            Vous êtes sur le point de supprimer définitivement{' '}
+                            <span className="font-semibold text-white">
+                                {deleteTargetId ? 1 : selectedIds.length}
+                            </span>{' '}
+                            candidature(s). Cette action est irréversible.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-[#0B0C15] border-white/5 hover:bg-white/5 hover:text-white">
+                            Annuler
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault()
+                                handleBulkDelete()
+                            }}
+                            className="bg-red-600 text-white hover:bg-red-500"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Suppression...' : 'Supprimer'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    )
+}

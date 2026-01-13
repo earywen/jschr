@@ -14,6 +14,9 @@ interface DiscordEmbed {
     thumbnail?: {
         url: string
     }
+    image?: {
+        url: string
+    }
 }
 
 interface DiscordWebhookPayload {
@@ -218,8 +221,12 @@ export async function notifyNewCandidate(
         }
     }
 
-    // Add image if screenshot available (and valid image)
-    // Note: Discord might not display it if it's not a direct image link
+    // Add large image if screenshot available
+    if (data?.screenshotUrl) {
+        embed.image = {
+            url: data.screenshotUrl,
+        }
+    }
 
     return sendDiscordNotification({
         username: 'JSC HR Bot',

@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
         const updated = await updateCandidateWlogsData(
             candidateId,
             wlogsData.bestPerfAvg,
-            wlogsData.color
+            wlogsData.color,
+            wlogsData.mythicPlusScore,
+            wlogsData.ilvl,
+            wlogsData.raidProgress
         )
 
         if (!updated) {

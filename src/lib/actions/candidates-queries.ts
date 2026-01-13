@@ -20,6 +20,7 @@ export interface CandidateWithDetails extends Candidate {
         name: string
         role: string
     } | null
+    approval_rate?: number
 }
 
 export async function getCandidates(
@@ -47,7 +48,26 @@ export async function getCandidates(
         return []
     }
 
-    return data as CandidateWithDetails[]
+    // Récupérer les votes pour calculer le taux d'approbation
+    const candidateIds = data.map(c => c.id)
+    const { data: votesData } = await supabase
+        .from('votes')
+        .select('candidate_id, vote')
+        .in('candidate_id', candidateIds)
+
+    const candidatesWithApproval = data.map(candidate => {
+        const candidateVotes = votesData?.filter(v => v.candidate_id === candidate.id) || []
+        const yes = candidateVotes.filter(v => v.vote === 'yes').length
+        const total = candidateVotes.length
+        const approval_rate = total > 0 ? Math.round((yes / total) * 100) : 0
+
+        return {
+            ...candidate,
+            approval_rate
+        }
+    })
+
+    return candidatesWithApproval as CandidateWithDetails[]
 }
 
 export async function getCandidateStats(): Promise<{

@@ -5,8 +5,6 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
     Users,
-    FileText,
-    Vote,
     Settings,
     LogOut,
     Shield,
@@ -26,25 +24,17 @@ interface SidebarProps {
 
 const navigation = {
     gm: [
-        { name: 'Dashboard', href: '/dashboard', icon: Home },
         { name: 'Candidatures', href: '/dashboard/candidates', icon: Users },
-        { name: 'Notes Officiers', href: '/dashboard/notes', icon: FileText },
-        { name: 'Votes', href: '/dashboard/votes', icon: Vote },
         { name: 'Paramètres', href: '/dashboard/settings', icon: Settings },
     ],
     officer: [
-        { name: 'Dashboard', href: '/dashboard', icon: Home },
         { name: 'Candidatures', href: '/dashboard/candidates', icon: Users },
-        { name: 'Notes Officiers', href: '/dashboard/notes', icon: FileText },
-        { name: 'Votes', href: '/dashboard/votes', icon: Vote },
     ],
     member: [
-        { name: 'Dashboard', href: '/dashboard', icon: Home },
         { name: 'Candidatures', href: '/dashboard/candidates', icon: Users },
-        { name: 'Mes Votes', href: '/dashboard/votes', icon: Vote },
     ],
     pending: [
-        { name: 'Dashboard', href: '/dashboard', icon: Home },
+        { name: 'Attente', href: '/dashboard', icon: Home },
     ],
 }
 
@@ -57,9 +47,9 @@ const roleLabels = {
 
 const roleColors = {
     gm: 'text-amber-400',
-    officer: 'text-purple-400',
-    member: 'text-green-400',
-    pending: 'text-zinc-500',
+    officer: 'text-[#4361EE]',
+    member: 'text-emerald-400',
+    pending: 'text-[#94A3B8]',
 }
 
 export function Sidebar({ user }: SidebarProps) {
@@ -75,28 +65,34 @@ export function Sidebar({ user }: SidebarProps) {
     }
 
     return (
-        <aside className="flex h-full w-64 flex-col border-r border-zinc-800 bg-zinc-900">
+        <aside className="flex h-full w-64 flex-col border-r border-white/5 bg-[#161822]">
             {/* Logo / Header */}
-            <div className="flex h-16 items-center gap-2 border-b border-zinc-800 px-4">
-                <Shield className="h-8 w-8 text-amber-500" />
+            <div className="flex h-16 items-center gap-3 border-b border-white/5 px-5">
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/5 border border-white/10 group-hover:border-primary/50 transition-all">
+                    <img
+                        src="/logo jsc.png"
+                        alt="JSC"
+                        className="h-7 w-7 object-contain"
+                    />
+                </div>
                 <div>
                     <h1 className="text-lg font-bold text-white">JSC HR</h1>
-                    <p className="text-xs text-zinc-500">Recrutement</p>
+                    <p className="text-xs text-[#94A3B8]">Recrutement</p>
                 </div>
             </div>
 
             {/* User Info */}
-            <div className="border-b border-zinc-800 px-4 py-3">
-                <p className="truncate text-sm font-medium text-zinc-200">
+            <div className="border-b border-white/5 px-5 py-4">
+                <p className="truncate text-sm font-medium text-white">
                     {user.email}
                 </p>
-                <p className={cn('text-xs font-semibold', roleColors[user.role])}>
+                <p className={cn('text-xs font-semibold mt-1', roleColors[user.role])}>
                     {roleLabels[user.role]}
                 </p>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 space-y-1 p-2">
+            <nav className="flex-1 space-y-1 p-3">
                 {items.map((item) => {
                     const isActive = pathname === item.href
                     return (
@@ -104,10 +100,10 @@ export function Sidebar({ user }: SidebarProps) {
                             key={item.name}
                             href={item.href}
                             className={cn(
-                                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                                'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200',
                                 isActive
-                                    ? 'bg-zinc-800 text-white'
-                                    : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'
+                                    ? 'bg-[#4361EE]/10 text-[#4361EE]'
+                                    : 'text-[#94A3B8] hover:bg-white/5 hover:text-white'
                             )}
                         >
                             <item.icon className="h-5 w-5" />
@@ -118,10 +114,10 @@ export function Sidebar({ user }: SidebarProps) {
             </nav>
 
             {/* Sign Out */}
-            <div className="border-t border-zinc-800 p-2">
+            <div className="border-t border-white/5 p-3">
                 <Button
                     variant="ghost"
-                    className="w-full justify-start gap-3 text-zinc-400 hover:bg-zinc-800/50 hover:text-white"
+                    className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-[#94A3B8] hover:bg-white/5 hover:text-white"
                     onClick={handleSignOut}
                 >
                     <LogOut className="h-5 w-5" />

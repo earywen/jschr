@@ -14,7 +14,7 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex h-screen bg-zinc-950">
+        <div className="flex h-screen bg-[#0B0C15]">
             {/* Sidebar */}
             <Sidebar user={user} />
 

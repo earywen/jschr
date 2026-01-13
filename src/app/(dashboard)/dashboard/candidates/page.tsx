@@ -1,22 +1,11 @@
 import { getCandidates, getCandidateStats } from '@/lib/actions/candidates-queries'
 import { getUserRole } from '@/lib/auth/role'
-import { CandidatesList } from '@/components/candidates/candidates-list'
+import { CandidatesDataTable } from '@/components/candidates/candidates-data-table'
 import { CandidatesStats } from '@/components/candidates/candidates-stats'
-import { CandidatesFilters } from '@/components/candidates/candidates-filters'
-import { Database } from '@/types/database.types'
 
-type CandidateStatus = Database['public']['Enums']['candidate_status']
-
-interface PageProps {
-    searchParams: Promise<{ status?: CandidateStatus }>
-}
-
-export default async function CandidatesPage({ searchParams }: PageProps) {
-    const params = await searchParams
-    const status = params.status
-
+export default async function CandidatesPage() {
     const [candidates, stats, user] = await Promise.all([
-        getCandidates(status),
+        getCandidates(), // Récupère TOUTES les candidatures, filtrage côté client
         getCandidateStats(),
         getUserRole(),
     ])
@@ -28,19 +17,16 @@ export default async function CandidatesPage({ searchParams }: PageProps) {
                 <h1 className="text-3xl font-bold tracking-tight text-white">
                     Candidatures
                 </h1>
-                <p className="text-zinc-400">
+                <p className="text-[#94A3B8]">
                     Gérez les candidatures en attente de décision.
                 </p>
             </div>
 
-            {/* Stats */}
+            {/* Stats — conservées car cliquables pour filtrer */}
             <CandidatesStats stats={stats} />
 
-            {/* Filters */}
-            <CandidatesFilters currentStatus={status} />
-
-            {/* List */}
-            <CandidatesList candidates={candidates} userRole={user?.role} />
+            {/* DataTable avec tri/filtre intégré */}
+            <CandidatesDataTable candidates={candidates} userRole={user?.role} />
         </div>
     )
 }
