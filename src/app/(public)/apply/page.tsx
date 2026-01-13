@@ -6,6 +6,7 @@ import { submitApplication } from '@/lib/actions/candidates'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { BlurFade } from '@/components/ui/blur-fade'
+import { RecruitmentBoard } from '@/components/recruitment/recruitment-board'
 
 export default function ApplyPage() {
     const router = useRouter()
@@ -57,6 +58,9 @@ export default function ApplyPage() {
                         </div>
                     </div>
                 </BlurFade>
+
+                {/* Recruitment Board */}
+                <RecruitmentBoard />
 
                 {error && (
                     <BlurFade delay={0.2}>

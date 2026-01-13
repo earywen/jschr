@@ -1,9 +1,31 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 interface WarcraftLogsCharacter {
     name: string
     serverSlug: string
     serverRegion: string
+}
+
+// WarcraftLogs API response types
+interface WLogsRanking {
+    totalKills?: number
+    bestRank?: {
+        ilvl?: number
+    }
+    allStars?: {
+        points?: number
+    }
+}
+
+interface WLogsRaidRankings {
+    rankings?: WLogsRanking[]
+    bestPerformanceAverage?: number
+    medianPerformanceAverage?: number
+    difficulty?: number
+}
+
+interface WLogsMythicPlusScores {
+    rankings?: WLogsRanking[]
 }
 
 interface WarcraftLogsData {
@@ -196,7 +218,7 @@ export async function fetchWarcraftLogsData(
         }
 
         // Raid Data
-        const raidRankings = characterData?.raidRankings
+        const raidRankings = characterData?.raidRankings as WLogsRaidRankings | undefined
         const bestPerfAvg = raidRankings?.bestPerformanceAverage || null
         const medianPerfAvg = raidRankings?.medianPerformanceAverage || null
 
@@ -207,15 +229,15 @@ export async function fetchWarcraftLogsData(
         if (raidRankings && raidRankings.rankings) {
             // Calculate iLvl (max of all bestRank.ilvl)
             const ilvls = raidRankings.rankings
-                .map((r: any) => r.bestRank?.ilvl)
-                .filter((v: any) => typeof v === 'number' && v > 0)
+                .map((r: WLogsRanking) => r.bestRank?.ilvl)
+                .filter((v): v is number => typeof v === 'number' && v > 0)
 
             if (ilvls.length > 0) {
                 ilvl = Math.max(...ilvls)
             }
 
             // Calculate Progress (killed bosses)
-            const kills = raidRankings.rankings.filter((r: any) => r.totalKills > 0).length
+            const kills = raidRankings.rankings.filter((r: WLogsRanking) => (r.totalKills ?? 0) > 0).length
             const total = raidRankings.rankings.length // Assume rankings list covers all bosses
 
             // Difficulty text
@@ -228,11 +250,11 @@ export async function fetchWarcraftLogsData(
         }
 
         // Mythic+ Data
-        const mPlusRankings = characterData?.mythicPlusScores?.rankings
+        const mPlusRankings = (characterData?.mythicPlusScores as WLogsMythicPlusScores | undefined)?.rankings
         let mythicPlusScore = null
 
         if (mPlusRankings && Array.isArray(mPlusRankings) && mPlusRankings.length > 0) {
-            const totalPoints = mPlusRankings.reduce((sum: number, ranking: any) => {
+            const totalPoints = mPlusRankings.reduce((sum: number, ranking: WLogsRanking) => {
                 const points = ranking.allStars?.points || 0
                 return sum + points
             }, 0)

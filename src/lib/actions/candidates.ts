@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { applicationSchema, type ApplicationFormData } from '@/lib/validations/application'
 import { notifyNewCandidate } from '@/lib/discord/notifications'
 import { fetchWarcraftLogsData, updateCandidateWlogsData } from '@/lib/api/warcraftlogs'
+import { getClassNameFromId, getSpecNameFromId } from '@/lib/data/wow-classes'
 import { revalidatePath } from 'next/cache'
 
 export interface SubmitApplicationResult {
@@ -150,64 +151,6 @@ export async function submitApplication(
         candidateId: candidate.id,
     }
 }
-
-// Helper to extract class name from our static ID
-function getClassNameFromId(classId: string): string {
-    const mapping: Record<string, string> = {
-        warrior: 'Warrior',
-        paladin: 'Paladin',
-        hunter: 'Hunter',
-        rogue: 'Rogue',
-        priest: 'Priest',
-        'death-knight': 'Death Knight',
-        shaman: 'Shaman',
-        mage: 'Mage',
-        warlock: 'Warlock',
-        monk: 'Monk',
-        druid: 'Druid',
-        'demon-hunter': 'Demon Hunter',
-        evoker: 'Evoker',
-    }
-    return mapping[classId] || classId
-}
-
-// Helper to extract spec name from our static ID (format: "classId-specName")
-function getSpecNameFromId(specId: string): string {
-    const parts = specId.split('-')
-    if (parts.length < 2) return specId
-
-    const specName = parts.slice(1).join('-')
-
-    // Map to proper names with spaces
-    const mapping: Record<string, string> = {
-        arms: 'Arms',
-        fury: 'Fury',
-        protection: 'Protection',
-        holy: 'Holy',
-        retribution: 'Retribution',
-        beastmastery: 'Beast Mastery',
-        marksmanship: 'Marksmanship',
-        survival: 'Survival',
-        assassination: 'Assassination',
-        combat: 'Combat',
-        subtlety: 'Subtlety',
-        discipline: 'Discipline',
-        shadow: 'Shadow',
-        arcane: 'Arcane',
-        fire: 'Fire',
-        frost: 'Frost',
-        affliction: 'Affliction',
-        demonology: 'Demonology',
-        destruction: 'Destruction',
-        balance: 'Balance',
-        feral: 'Feral',
-        guardian: 'Guardian',
-        restoration: 'Restoration',
-    }
-
-    return mapping[specName] || specName
-}
-
 
 
 export async function deleteCandidate(candidateId: string): Promise<SubmitApplicationResult> {

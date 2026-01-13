@@ -161,19 +161,7 @@ export async function notifyNewCandidate(
         })
     }
 
-    // Add links row
-    let linksValue = `[Dashboard](${dashboardLink})`
-    if (data?.wlogsLink) linksValue += ` • [WarcraftLogs](${data.wlogsLink})`
-    if (data?.screenshotUrl) linksValue += ` • [Interface](${data.screenshotUrl})`
 
-    // Add Voter link specifically
-    linksValue += ` • [🗳️ Voter](${dashboardLink}#vote-section)`
-
-    fields.push({
-        name: '🔗 Liens',
-        value: linksValue,
-        inline: false,
-    })
 
     // Text Fields
     // Helper to truncate text
@@ -200,6 +188,16 @@ export async function notifyNewCandidate(
     fields.push({
         name: '💬 Mot de la fin',
         value: truncate(motivation, 1024),
+        inline: false,
+    })
+
+    // Add links row (Moved to end)
+    let linksValue = `[Dashboard](${dashboardLink})`
+    if (data?.wlogsLink) linksValue += ` • [WarcraftLogs](${data.wlogsLink})`
+
+    fields.push({
+        name: '🔗 Liens',
+        value: linksValue,
         inline: false,
     })
 

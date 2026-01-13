@@ -53,9 +53,10 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
                 .getPublicUrl(filePath)
 
             onChange(publicUrl)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Upload error:', err)
-            setError(err.message || 'Une erreur est survenue lors de l\'envoi.')
+            const message = err instanceof Error ? err.message : 'Une erreur est survenue lors de l\'envoi.'
+            setError(message)
         } finally {
             setIsUploading(false)
             setUploadProgress(0)

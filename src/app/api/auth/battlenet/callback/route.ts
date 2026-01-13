@@ -1,4 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+
+// Security: HTML escape function to prevent XSS
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+}
 
 interface WoWCharacter {
     name: string
@@ -59,6 +70,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
     const error = searchParams.get('error')
+    const state = searchParams.get('state')
+
+    // Security: Validate OAuth state parameter to prevent CSRF
+    const cookieStore = await cookies()
+    const storedState = cookieStore.get('battlenet_oauth_state')?.value
+
+    if (!state || state !== storedState) {
+        return createErrorResponse('Erreur de sécurité: état OAuth invalide')
+    }
+
+    // Clear the state cookie after validation
+    cookieStore.delete('battlenet_oauth_state')
 
     if (error) {
         return createErrorResponse(error)
@@ -214,6 +237,9 @@ export async function GET(request: NextRequest) {
 }
 
 function createErrorResponse(errorMessage: string): NextResponse {
+    // Security: Escape HTML to prevent XSS attacks
+    const safeMessage = escapeHtml(errorMessage)
+
     return new NextResponse(
         `<!DOCTYPE html>
 <html>
@@ -221,7 +247,7 @@ function createErrorResponse(errorMessage: string): NextResponse {
 <body>
     <script>
         if (window.opener) {
-            window.opener.postMessage({ type: 'battlenet-error', error: '${errorMessage}' }, window.location.origin);
+            window.opener.postMessage({ type: 'battlenet-error', error: '${safeMessage}' }, window.location.origin);
         }
         window.close();
     </script>

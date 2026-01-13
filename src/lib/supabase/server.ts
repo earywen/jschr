@@ -2,13 +2,14 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Database } from '@/types/database.types'
+import { env } from '@/lib/env'
 
 export async function createClient() {
     const cookieStore = await cookies()
 
     return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        env.NEXT_PUBLIC_SUPABASE_URL,
+        env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
         {
             cookies: {
                 get(name: string) {
@@ -17,7 +18,7 @@ export async function createClient() {
                 set(name: string, value: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value, ...options })
-                    } catch (error) {
+                    } catch {
                         // The `set` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing
                         // user sessions.
@@ -26,7 +27,7 @@ export async function createClient() {
                 remove(name: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value: '', ...options })
-                    } catch (error) {
+                    } catch {
                         // The `delete` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing
                         // user sessions.
@@ -40,15 +41,15 @@ export async function createClient() {
 
 export function createAdminClient() {
     return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_KEY!,
+        env.NEXT_PUBLIC_SUPABASE_URL,
+        env.SUPABASE_SERVICE_KEY,
         {
             cookies: {
-                get(name: string) {
+                get() {
                     return ''
                 },
-                set(name: string, value: string, options: CookieOptions) { },
-                remove(name: string, options: CookieOptions) { },
+                set() { },
+                remove() { },
             },
         }
     )

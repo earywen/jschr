@@ -16,11 +16,12 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { WOW_CLASSES, getSpecsByClass, getClassById } from '@/lib/data/wow-classes'
+import { WOW_CLASSES, getSpecsByClass, getClassById, getClassIdFromName } from '@/lib/data/wow-classes'
 import {
     identitySchema,
     characterSchema,
     motivationSchema,
+    applicationSchema,
     type IdentityFormData,
     type CharacterFormData,
     type MotivationFormData,
@@ -44,33 +45,6 @@ interface BattleNetCharacter {
     className: string
     faction: string
     avatarUrl: string
-}
-
-const CLASS_NAME_MAP: Record<string, string> = {
-    'Warrior': 'warrior',
-    'Guerrier': 'warrior',
-    'Paladin': 'paladin',
-    'Hunter': 'hunter',
-    'Chasseur': 'hunter',
-    'Rogue': 'rogue',
-    'Voleur': 'rogue',
-    'Priest': 'priest',
-    'Prêtre': 'priest',
-    'Death Knight': 'death-knight',
-    'Chevalier de la mort': 'death-knight',
-    'Shaman': 'shaman',
-    'Chaman': 'shaman',
-    'Mage': 'mage',
-    'Warlock': 'warlock',
-    'Démoniste': 'warlock',
-    'Monk': 'monk',
-    'Moine': 'monk',
-    'Druid': 'druid',
-    'Druide': 'druid',
-    'Demon Hunter': 'demon-hunter',
-    'Chasseur de démons': 'demon-hunter',
-    'Evoker': 'evoker',
-    'Évocateur': 'evoker',
 }
 
 const STEPS = [
@@ -156,11 +130,20 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
         const isValid = await step3Form.trigger()
         if (isValid) {
             setIsSubmitting(true)
-            const finalData = {
+            const rawData = {
                 ...formData,
                 ...step3Form.getValues(),
-            } as ApplicationFormData
-            await onSubmit(finalData)
+            }
+
+            // Validate with full schema to ensure type safety
+            const parseResult = applicationSchema.safeParse(rawData)
+            if (!parseResult.success) {
+                console.error('Validation failed:', parseResult.error.issues)
+                setIsSubmitting(false)
+                return
+            }
+
+            await onSubmit(parseResult.data)
             setIsSubmitting(false)
         }
     }
@@ -169,7 +152,8 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
 
     const handleSelectCharacter = (char: BattleNetCharacter) => {
         step1Form.setValue('characterName', char.name)
-        const classSlug = CLASS_NAME_MAP[char.className] || ''
+        // Use centralized class mapping from wow-classes.ts
+        const classSlug = getClassIdFromName(char.className)
         if (classSlug) {
             step2Form.setValue('classId', classSlug)
         }
@@ -192,8 +176,8 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/90 backdrop-blur-md px-4">
                     <BlurFade>
                         <GlassCard
-                            className="w-full max-w-lg max-h-[85vh] border-white/10 bg-black/60 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
-                            innerClassName="p-0 flex flex-col h-full"
+                            className="w-full max-w-lg max-h-[85vh] flex flex-col border-white/10 bg-black/60 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
+                            innerClassName="p-0 flex flex-col h-full min-h-0"
                             showBorderBeam
                         >
                             {/* Background Glow */}
@@ -208,58 +192,67 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                             </div>
 
                             <div className="relative flex-1 overflow-y-auto px-6 py-6 space-y-3 custom-scrollbar">
-                                {fetchedCharacters.map((char, idx) => (
-                                    <button
-                                        key={`${char.name}-${char.realm}-${idx}`}
-                                        onClick={() => handleSelectCharacter(char)}
-                                        className="group relative flex w-full items-center gap-5 rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-4 text-left transition-all hover:bg-white/[0.05] hover:border-primary/30"
-                                    >
-                                        {/* Faction Accent */}
-                                        <div className={cn(
-                                            "absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 rounded-r-full shadow-[0_0_15px_currentColor]",
-                                            char.faction === 'HORDE' ? "bg-red-500 text-red-500" : "bg-blue-500 text-blue-500"
-                                        )} />
+                                {fetchedCharacters.map((char, idx) => {
+                                    const classId = getClassIdFromName(char.className)
+                                    const wowClass = classId ? getClassById(classId) : null
+                                    const classColor = wowClass?.color || (char.faction === 'HORDE' ? '#ef4444' : '#3b82f6')
 
-                                        <div className="relative h-16 w-16 flex-shrink-0">
-                                            <div className="absolute -inset-1 bg-gradient-to-tr from-white/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl transition-transform group-hover:scale-105">
-                                                <div className="absolute inset-0 flex items-center justify-center text-2xl font-black text-zinc-700 select-none">
-                                                    {char.name.charAt(0)}
+                                    return (
+                                        <button
+                                            key={`${char.name}-${char.realm}-${idx}`}
+                                            onClick={() => handleSelectCharacter(char)}
+                                            className="group relative flex w-full items-center gap-5 rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-4 text-left transition-all hover:bg-white/[0.05] hover:border-primary/30"
+                                        >
+                                            {/* Class/Faction Accent */}
+                                            <div
+                                                className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 rounded-r-full transition-all duration-300"
+                                                style={{
+                                                    backgroundColor: classColor,
+                                                    boxShadow: `0 0 15px ${classColor}`,
+                                                }}
+                                            />
+
+                                            <div className="relative h-16 w-16 flex-shrink-0">
+                                                <div className="absolute -inset-1 bg-gradient-to-tr from-white/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl transition-transform group-hover:scale-105">
+                                                    <div className="absolute inset-0 flex items-center justify-center text-2xl font-black text-zinc-700 select-none">
+                                                        {char.name.charAt(0)}
+                                                    </div>
+                                                    {char.avatarUrl && (
+                                                        <img
+                                                            src={char.avatarUrl}
+                                                            alt={char.name}
+                                                            className="relative z-10 h-full w-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-500"
+                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                                        />
+                                                    )}
                                                 </div>
-                                                {char.avatarUrl && (
-                                                    <img
-                                                        src={char.avatarUrl}
-                                                        alt={char.name}
-                                                        className="relative z-10 h-full w-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-500"
-                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                                                    />
-                                                )}
                                             </div>
-                                        </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-black text-white group-hover:text-primary transition-colors text-xl tracking-tighter uppercase">
-                                                    {char.name}
-                                                </p>
-                                                <span className="px-1.5 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black text-zinc-400 uppercase tracking-wider">
-                                                    Niv. {char.level}
-                                                </span>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-black text-white group-hover:text-primary transition-colors text-xl tracking-tighter uppercase">
+                                                        {char.name}
+                                                    </p>
+                                                    <span className="px-1.5 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black text-zinc-400 uppercase tracking-wider">
+                                                        Niv. {char.level}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{char.realm}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-zinc-800" />
+                                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{char.className}</span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{char.realm}</span>
-                                                <span className="w-1 h-1 rounded-full bg-zinc-800" />
-                                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{char.className}</span>
-                                            </div>
-                                        </div>
 
-                                        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 mr-2">
-                                            <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-                                                <ChevronRight className="h-4 w-4 text-primary" />
+                                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 mr-2">
+                                                <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
+                                                    <ChevronRight className="h-4 w-4 text-primary" />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </button>
-                                ))}
+                                        </button>
+                                    )
+                                })}
                             </div>
 
                             <div className="relative p-6 px-8 bg-zinc-950/50">
