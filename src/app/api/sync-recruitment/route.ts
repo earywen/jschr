@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 /**
- * Triggers the recruitment sync via GitHub Actions workflow_dispatch.
- * Requires a GitHub Personal Access Token with `repo` scope.
+ * Triggers the recruitment sync via n8n webhook on user's home server.
+ * Requires N8N_WEBHOOK_URL environment variable.
  */
 export async function POST() {
     try {
@@ -26,48 +26,40 @@ export async function POST() {
             return NextResponse.json({ error: 'Accès réservé au Grand Maître' }, { status: 403 })
         }
 
-        // 2. Trigger GitHub Actions workflow
-        const GITHUB_TOKEN = process.env.GITHUB_PAT
-        const GITHUB_OWNER = 'earywen'
-        const GITHUB_REPO = 'jschr'
-        const WORKFLOW_ID = 'daily-recruitment-sync.yml'
+        // 2. Trigger n8n webhook
+        const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL
 
-        if (!GITHUB_TOKEN) {
+        if (!N8N_WEBHOOK_URL) {
             return NextResponse.json({
-                error: 'GITHUB_PAT non configuré. Ajoutez-le dans vos variables d\'environnement.',
+                error: 'N8N_WEBHOOK_URL non configuré. Ajoutez-le dans vos variables d\'environnement.',
             }, { status: 500 })
         }
 
-        const response = await fetch(
-            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
-            {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/vnd.github+json',
-                    'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                    'X-GitHub-Api-Version': '2022-11-28',
-                },
-                body: JSON.stringify({
-                    ref: 'main', // Branch to run the workflow on
-                }),
-            }
-        )
+        const response = await fetch(N8N_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                trigger: 'manual',
+                timestamp: new Date().toISOString(),
+            }),
+        })
 
-        if (response.status === 204) {
+        if (response.ok) {
             return NextResponse.json({
-                message: 'Synchronisation lancée ! Elle devrait se terminer dans 1-2 minutes.',
+                message: 'Synchronisation lancée sur le serveur ! Elle devrait se terminer dans 1-2 minutes.',
             })
         } else {
-            const errorData = await response.json().catch(() => ({}))
-            console.error('GitHub API error:', response.status, errorData)
+            const errorText = await response.text().catch(() => '')
+            console.error('n8n webhook error:', response.status, errorText)
             return NextResponse.json({
-                error: `Erreur GitHub (${response.status}): ${errorData.message || 'Vérifiez votre token.'}`,
-            }, { status: response.status })
+                error: `Erreur serveur n8n (${response.status}). Vérifiez que le serveur est accessible.`,
+            }, { status: 502 })
         }
 
     } catch (error) {
         console.error('Sync trigger error:', error)
-        return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+        return NextResponse.json({ error: 'Erreur serveur ou serveur n8n inaccessible' }, { status: 500 })
     }
 }
-

@@ -76,7 +76,7 @@ export function RecruitmentSync() {
             </div>
 
             <p className="text-xs text-zinc-500">
-                La synchronisation automatique s'effectue chaque jour à 23h (via GitHub Actions).
+                La synchronisation automatique s'effectue chaque jour à 23h (via n8n).
             </p>
         </div>
     )
