@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "JSC HR",
+  title: "Jet Set Club - Apply",
   description: "Recruitment platform for JSC",
 };
 
