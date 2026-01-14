@@ -46,47 +46,14 @@ export default function LoginPage({
                             </Button>
                         </form>
 
-                        <div className="relative py-2">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-white/5"></span>
-                            </div>
-                            <div className="relative flex justify-center text-[10px] uppercase tracking-widest text-zinc-600 font-bold">
-                                <span className="bg-black/0 px-4">Ou via Magic Link</span>
-                            </div>
-                        </div>
 
-                        <form className="space-y-3">
-                            <div className="space-y-2 text-left">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-600 px-1" htmlFor="email">
-                                    Email Professionnel
-                                </Label>
-                                <Input
-                                    id="email"
-                                    name="email"
-                                    placeholder="nom@exemple.com"
-                                    type="email"
-                                    autoCapitalize="none"
-                                    autoComplete="email"
-                                    autoCorrect="off"
-                                    className="h-14 bg-white/[0.03] border-white/5 text-white placeholder:text-zinc-700 rounded-2xl focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all px-6"
-                                    required
-                                />
-                            </div>
-                            <Button
-                                formAction={login}
-                                variant="outline"
-                                className="w-full h-14 bg-white/5 border-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
-                            >
-                                Envoyer le lien
-                            </Button>
-                        </form>
                     </div>
 
                     {(searchParams?.message || searchParams?.error) && (
                         <BlurFade delay={0.2}>
                             <p className={`text-[10px] font-black uppercase tracking-widest p-4 rounded-xl border ${searchParams?.message
-                                    ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20'
-                                    : 'text-red-400 bg-red-400/10 border-red-400/20'
+                                ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20'
+                                : 'text-red-400 bg-red-400/10 border-red-400/20'
                                 }`}>
                                 {searchParams.message || searchParams.error}
                             </p>
@@ -95,7 +62,7 @@ export default function LoginPage({
                 </div>
 
                 <p className="mt-8 text-center text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em]">
-                    &copy; {new Date().getFullYear()} Jet Set Club &bull; High End Recruiting
+                    &copy; {new Date().getFullYear()} Jet Set Club
                 </p>
             </BlurFade>
         </div>

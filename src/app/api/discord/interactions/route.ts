@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({
                     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
                     data: {
-                        content: "❌ Votre compte Discord n'est pas lié à un membre du site, ou vous n'êtes pas inscrit. Connectez-vous sur le site une fois pour lier votre compte.",
+                        content: `❌ Votre compte Discord n'est pas lié à un membre du site, ou vous n'êtes pas inscrit. Connectez-vous sur https://jsc-apply.vercel.app/login une fois pour lier votre compte.`,
                         flags: 64, // Ephemeral
                     },
                 });
