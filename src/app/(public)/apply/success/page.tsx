@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, RotateCcw, Home } from 'lucide-react'
+import { CheckCircle2, Home } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -30,7 +30,7 @@ export default function ApplySuccessPage() {
                         <div className="space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Candidature transmise</p>
                             <h1 className="text-4xl font-black text-white tracking-tighter sm:text-5xl">
-                                Bienvenue, <span className="text-primary italic">Aspirant</span>.
+                                Félicitations!
                             </h1>
                         </div>
                         <p className="text-zinc-500 leading-relaxed text-sm max-w-sm mx-auto">
@@ -38,24 +38,14 @@ export default function ApplySuccessPage() {
                         </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                    <div className="flex justify-center pt-4">
                         <Button
                             asChild
-                            variant="outline"
-                            className="flex-1 h-14 bg-white/5 border-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+                            className="h-14 w-72 bg-primary text-black hover:bg-primary/90 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all hover:scale-105"
                         >
                             <Link href="/" className="gap-2">
                                 <Home className="h-4 w-4" />
                                 Accueil
-                            </Link>
-                        </Button>
-                        <Button
-                            asChild
-                            className="flex-1 h-14 bg-primary text-black hover:bg-primary/90 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all"
-                        >
-                            <Link href="/apply" className="gap-2">
-                                <RotateCcw className="h-4 w-4" />
-                                Recommencer
                             </Link>
                         </Button>
                     </div>

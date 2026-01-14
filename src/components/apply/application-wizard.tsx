@@ -376,7 +376,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                             <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#00AEFF]/15 border border-[#00AEFF]/30 shadow-[0_0_8px_rgba(0,174,255,0.2)] text-[#00AEFF]">
                                                 <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current"><path d="M19.92 10.76s2.58 1.48 2.58 3.13c0 1.61-3 2.17-6.32 2.01c0 0-1.41 1.97-2.76 2.8c1.46 2.74 2.58 3.8 2.55 3.8c0 0-.74.19-2.97-3.46c-1.34.85-2.83 1.19-3.44.66c-.62-.53-.14-1.42.12-1.85c-.27.15-1.68.98-2.93.98c-1.49 0-1.7-1.11-1.7-1.68C5.05 15 7.12 12 7.12 12s-.96-2.12-1.07-3.78c-1.88-.16-4.05.17-4.52.32c-.13 0 .31-.32.47-.36c.15-.05 1.91-.51 4-.51c0-1.74.35-3.34 1.41-3.34c.72 0 1.3 1.12 1.3 1.12S8.7 1.5 10.74 1.5C12.8 1.5 15 6.11 15 6.11s2.22.21 3.85.98c.65-1.36 1.24-1.98 1.96-4.09c.19.7-.61 2.5-1.46 4.3c0 0 2.3 1.2 2.3 2.53c0 1.01-1.73.93-1.73.93m-9.24 7.82c.68.11 1.73-.48 1.72-.48l-.82-1.53l-1.18.83c-.01.01-.76.98.28 1.18m9.47-8.82c0-.66-1.2-1.41-1.34-1.49l-.92 1.48l1.28.62c.42-.03.98-.02.98-.61M8 5.63c-.3 0-.91.44-.91 2.01l1.74.06l-.11-1.4C8.6 6 8.3 5.63 8 5.63m2.18 10.15c-1.26-.65-2.02-1.72-2.64-2.88c0 0-1.58 2.65-.57 3.32c1.03.67 2.67-.06 3.21-.44m2.79 1.98c1.14-.87 4.22-3.03 4.48-6.68c-2.88-1.64-6.83-2.37-6.83-2.37s-.01-.5.08-.85c.94.11 3.89.61 6.33 1.57c-.68-1.15-1.19-1.58-1.66-1.93c1.16.26 1.99 1.76 1.99 1.76l.92-1.3s-4.37-2.35-8.09-.54c-.08 2.88 1.4 7.14 1.4 7.14l-.77.33c-.52-1.05-1.19-2.8-1.82-6.22c-.3.41-.83.88-.84 2.42c-.46-1.29.5-2.66.51-2.67l-1.6-.16c.1 1.66.98 5.94 3.61 7.27c2.32-1.32 4.82-3.99 5.45-4.76l.69.51l-4.47 4.69c1.24.03 1.97-.25 2.47-.47c-.72.75-1.96.82-2.55.82c.01.02.3.75.7 1.44m1.06-11.71c-.03-.08-1.37-2.36-2.56-2.19c-.78.25-1.23 1.57-1.24 3.01c.53-.31 1.77-.87 3.8-.82m2.68 9.02S20 15 19.9 13.76c0-1.2-1.98-2.43-1.98-2.41c.01 2.12-1.21 3.72-1.21 3.72z" /></svg>
                                             </div>
-                                            BattleTag
+                                            BattleTag *
                                         </Label>
                                         <Input
                                             id="battleTag"
@@ -394,7 +394,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                             <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#5865F2]/15 border border-[#5865F2]/30 shadow-[0_0_8px_rgba(88,101,242,0.2)] text-[#5865F2]">
                                                 <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current"><path d="m22 24l-5.25-5l.63 2H4.5A2.5 2.5 0 0 1 2 18.5v-15A2.5 2.5 0 0 1 4.5 1h15A2.5 2.5 0 0 1 22 3.5V24M12 6.8c-2.68 0-4.56 1.15-4.56 1.15c1.03-.92 2.83-1.45 2.83-1.45l-.17-.17c-1.69.03-3.22 1.2-3.22 1.2c-1.72 3.59-1.61 6.69-1.61 6.69c1.4 1.81 3.48 1.68 3.48 1.68l.71-.9c-1.25-.27-2.04-1.38-2.04-1.38S9.3 14.9 12 14.9s4.58-1.28 4.58-1.28s-.79 1.11-2.04 1.38l.71.9s2.08.13 3.48-1.68c0 0 .11-3.1-1.61-6.69c0 0-1.53-1.17-3.22-1.2l-.17.17s1.8.53 2.83 1.45c0 0-1.88-1.15-4.56-1.15m-2.07 3.79c.65 0 1.18.57 1.17 1.27c0 .69-.52 1.27-1.17 1.27c-.64 0-1.16-.58-1.16-1.27c0-.7.51-1.27 1.16-1.27m4.17 0c.65 0 1.17.57 1.17 1.27c0 .69-.52 1.27-1.17 1.27c-.64 0-1.16-.58-1.16-1.27c0-.7.51-1.27 1.16-1.27Z" /></svg>
                                             </div>
-                                            ID Discord
+                                            ID Discord *
                                         </Label>
                                         <Input
                                             id="discordId"
@@ -474,6 +474,9 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        {step2Form.formState.errors.specId && (
+                                            <p className="text-xs font-bold text-destructive mt-1">{step2Form.formState.errors.specId.message}</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -495,9 +498,13 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                         placeholder="Inutile de nous mentionner votre expérience Vanilla/BC/Wotlk & cie, c'est chouette, mais c'est plus vraiment pertinent :)"
                                         className="min-h-[120px] bg-black/40 border-white/5 text-white placeholder:text-zinc-700 rounded-xl p-4"
                                     />
+                                    {step2Form.formState.errors.raidExperience && (
+                                        <p className="text-xs font-bold text-destructive mt-1">{step2Form.formState.errors.raidExperience.message}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-zinc-500">Capture d'écran de votre UI</Label>
                                     <ImageUpload
                                         value={step2Form.watch('screenshotUrl')}
                                         onChange={(url) => step2Form.setValue('screenshotUrl', url)}
@@ -530,6 +537,9 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                         placeholder="Votre histoire commence ici..."
                                         className="min-h-[100px] bg-black/40 border-white/5 text-white placeholder:text-zinc-700 rounded-xl p-4"
                                     />
+                                    {step3Form.formState.errors.aboutMe && (
+                                        <p className="text-xs font-bold text-destructive mt-1">{step3Form.formState.errors.aboutMe.message}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -543,6 +553,9 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                         placeholder="Votre vision du Club..."
                                         className="min-h-[100px] bg-black/40 border-white/5 text-white placeholder:text-zinc-700 rounded-xl p-4"
                                     />
+                                    {step3Form.formState.errors.whyJSC && (
+                                        <p className="text-xs font-bold text-destructive mt-1">{step3Form.formState.errors.whyJSC.message}</p>
+                                    )}
                                 </div>
 
                                 <div className="relative group overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 p-6">
