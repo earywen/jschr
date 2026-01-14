@@ -283,7 +283,7 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                             {/* 1. À Propos du Joueur */}
                             <div>
                                 <SectionHeader icon={User}>À Propos du Joueur</SectionHeader>
-                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap">
+                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap break-words">
                                     {candidate.about_me || 'Ce candidat garde le mystère sur son profil.'}
                                 </p>
                             </div>
@@ -293,7 +293,7 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                             {/* 2. Expérience de Raid */}
                             <div>
                                 <SectionHeader icon={Swords}>Expérience de Raid</SectionHeader>
-                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap">
+                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap break-words">
                                     {candidate.raid_experience || 'Aucune information fournie.'}
                                 </p>
                             </div>
@@ -303,7 +303,7 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                             {/* 3. Pourquoi Jet Set Club? */}
                             <div>
                                 <SectionHeader icon={HelpCircle}>Pourquoi Jet Set Club ?</SectionHeader>
-                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap">
+                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap break-words">
                                     {candidate.why_jsc || 'Aucune information fournie.'}
                                 </p>
                             </div>
@@ -313,7 +313,7 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                             {/* 4. Le mot de la fin */}
                             <div>
                                 <SectionHeader icon={MessageSquare}>Le mot de la fin</SectionHeader>
-                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap">
+                                <p className="text-[#94A3B8] leading-relaxed whitespace-pre-wrap break-words">
                                     {candidate.motivation || 'Ce candidat n\'a pas encore fourni de motivation détaillée.'}
                                 </p>
                             </div>

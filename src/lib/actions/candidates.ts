@@ -162,14 +162,11 @@ export async function deleteCandidate(candidateId: string): Promise<SubmitApplic
     } = await supabase.auth.getUser()
 
     if (!user) {
-        console.log('DeleteCandidate: No user found')
         return { success: false, error: 'Non authentifié' }
     }
 
-    // Use admin client to ensure we can read the members table
-    // (RLS might prevent reading user roles efficiently if not configured for self-read)
-    const adminSupabase = createAdminClient()
-    const { data: member } = await adminSupabase
+    // Check role using regular client (RLS policies now allow this)
+    const { data: member } = await supabase
         .from('members')
         .select('role')
         .eq('id', user.id)
@@ -179,7 +176,7 @@ export async function deleteCandidate(candidateId: string): Promise<SubmitApplic
         return { success: false, error: 'Action non autorisée (GM uniquement)' }
     }
 
-    // 2. Delete candidate
+    // 2. Delete candidate (RLS policy handles authorization)
     const { error } = await supabase
         .from('candidates')
         .delete()
@@ -206,9 +203,8 @@ export async function deleteCandidates(candidateIds: string[]): Promise<SubmitAp
         return { success: false, error: 'Non authentifié' }
     }
 
-    // Use admin client to ensure we can read the members table
-    const adminSupabase = createAdminClient()
-    const { data: member } = await adminSupabase
+    // Check role using regular client (RLS policies now allow this)
+    const { data: member } = await supabase
         .from('members')
         .select('role')
         .eq('id', user.id)
@@ -218,7 +214,7 @@ export async function deleteCandidates(candidateIds: string[]): Promise<SubmitAp
         return { success: false, error: 'Action non autorisée (GM uniquement)' }
     }
 
-    // 2. Delete candidates
+    // 2. Delete candidates (RLS policy handles authorization)
     const { error } = await supabase
         .from('candidates')
         .delete()

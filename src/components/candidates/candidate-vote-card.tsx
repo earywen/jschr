@@ -60,7 +60,7 @@ export function CandidateVoteCard({
                             disabled={isLoading !== null}
                             size="sm"
                             className={cn(
-                                "h-9 px-5 rounded-full font-black flex items-center gap-1.5 transition-all duration-300",
+                                "h-9 px-3 sm:px-5 rounded-full font-black flex items-center gap-1.5 transition-all duration-300",
                                 currentVote === 'yes'
                                     ? "bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                                     : "bg-transparent text-zinc-500 hover:text-emerald-400"
@@ -75,7 +75,7 @@ export function CandidateVoteCard({
                             disabled={isLoading !== null}
                             size="sm"
                             className={cn(
-                                "h-9 px-4 rounded-full font-bold flex items-center gap-1.5 transition-all duration-300",
+                                "h-9 px-3 sm:px-4 rounded-full font-bold flex items-center gap-1.5 transition-all duration-300",
                                 currentVote === 'neutral'
                                     ? "bg-zinc-600 text-white"
                                     : "bg-transparent text-zinc-600 hover:text-white"
@@ -90,7 +90,7 @@ export function CandidateVoteCard({
                             disabled={isLoading !== null}
                             size="sm"
                             className={cn(
-                                "h-9 px-5 rounded-full font-black flex items-center gap-1.5 transition-all duration-300",
+                                "h-9 px-3 sm:px-5 rounded-full font-black flex items-center gap-1.5 transition-all duration-300",
                                 currentVote === 'no'
                                     ? "bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]"
                                     : "bg-transparent text-zinc-500 hover:text-rose-400"

@@ -18,11 +18,21 @@ const envSchema = z.object({
     WARCRAFTLOGS_CLIENT_ID: z.string().optional(),
     WARCRAFTLOGS_CLIENT_SECRET: z.string().optional(),
 
-    // Discord Webhook - Optional
+    // Discord Integration - Required for notifications and voting
     DISCORD_WEBHOOK_URL: z.string().url().optional(),
+    DISCORD_PUBLIC_KEY: z.string().min(1, 'DISCORD_PUBLIC_KEY is required for interaction verification'),
+    DISCORD_BOT_TOKEN: z.string().min(1, 'DISCORD_BOT_TOKEN is required for Discord API'),
+    DISCORD_CHANNEL_ID: z.string().min(1, 'DISCORD_CHANNEL_ID is required for notifications'),
 
-    // App URL
+    // GitHub - Optional
+    GH_PAT: z.string().optional(),
+
+    // N8N Automation - Optional
+    N8N_WEBHOOK_URL: z.string().url().optional(),
+
+    // App URLs
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
 
     // Node environment
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

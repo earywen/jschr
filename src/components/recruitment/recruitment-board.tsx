@@ -60,7 +60,7 @@ export function RecruitmentBoard() {
                         Classes Recherchées
                     </h2>
                     <p className="text-zinc-500 text-xs">
-                        Survolez les classes pour voir les spécialisations • Mise à jour auto depuis WowProgress
+                        Survolez les classes pour voir les spécialisations
                     </p>
                 </div>
 

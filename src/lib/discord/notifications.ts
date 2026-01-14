@@ -24,33 +24,42 @@ interface DiscordWebhookPayload {
     embeds?: DiscordEmbed[]
     username?: string
     avatar_url?: string
+    components?: any[]
 }
 
+// Updated to use Bot API for Interactive Components
 export async function sendDiscordNotification(payload: DiscordWebhookPayload): Promise<boolean> {
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+    const botToken = process.env.DISCORD_BOT_TOKEN
+    const channelId = process.env.DISCORD_CHANNEL_ID
 
-    if (!webhookUrl) {
-        console.warn('Discord webhook URL not configured')
+    if (!botToken || !channelId) {
+        console.warn('Discord Bot Token or Channel ID not configured')
         return false
     }
 
     try {
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
             method: 'POST',
             headers: {
+                'Authorization': `Bot ${botToken}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                content: payload.content,
+                embeds: payload.embeds,
+                components: payload.components
+                // Username/Avatar ignored by Bot API
+            }),
         })
 
         if (!response.ok) {
-            console.error('Discord webhook failed:', response.status, await response.text())
+            console.error('Discord API failed:', response.status, await response.text())
             return false
         }
 
         return true
     } catch (error) {
-        console.error('Discord webhook error:', error)
+        console.error('Discord API error:', error)
         return false
     }
 }
@@ -226,8 +235,39 @@ export async function notifyNewCandidate(
         }
     }
 
+    // Create Action Row with Buttons
+    const components = [
+        {
+            type: 1, // Action Row
+            components: [
+                {
+                    type: 2, // Button
+                    style: 3, // Success (Green)
+                    label: 'Pour',
+                    emoji: { name: '✅' },
+                    custom_id: `vote:${candidateId}:yes`
+                },
+                {
+                    type: 2, // Button
+                    style: 2, // Secondary (Grey)
+                    label: 'Neutre',
+                    emoji: { name: '😐' },
+                    custom_id: `vote:${candidateId}:neutral`
+                },
+                {
+                    type: 2, // Button
+                    style: 4, // Danger (Red)
+                    label: 'Contre',
+                    emoji: { name: '🛑' },
+                    custom_id: `vote:${candidateId}:no`
+                }
+            ]
+        }
+    ]
+
     return sendDiscordNotification({
         username: 'JSC HR Bot',
         embeds: [embed],
+        components: components
     })
 }

@@ -1,8 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchWarcraftLogsData, updateCandidateWlogsData } from '@/lib/api/warcraftlogs'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
     try {
+        // Authentication check
+        const supabase = await createClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { success: false, error: 'Non authentifié' },
+                { status: 401 }
+            )
+        }
+
+        // Authorization check - only officers and GM can trigger WarcraftLogs fetch
+        const { data: member, error: memberError } = await supabase
+            .from('members')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (memberError || !member) {
+            return NextResponse.json(
+                { success: false, error: 'Membre non trouvé' },
+                { status: 403 }
+            )
+        }
+
+        if (!['officer', 'gm'].includes(member.role)) {
+            return NextResponse.json(
+                { success: false, error: 'Accès réservé aux officiers et au Grand Maître' },
+                { status: 403 }
+            )
+        }
+
         const { candidateId, warcraftlogsUrl } = await request.json()
 
         if (!candidateId || !warcraftlogsUrl) {

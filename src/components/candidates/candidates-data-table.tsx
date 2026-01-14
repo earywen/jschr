@@ -1,5 +1,8 @@
 'use client'
 
+
+import { useIsMobile } from '@/lib/hooks/use-media-query'
+import { CandidateMobileCard } from './candidate-mobile-card'
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -660,6 +663,7 @@ interface DataTableProps {
 export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
     const router = useRouter()
     const isGM = userRole === 'gm'
+    const isMobile = useIsMobile()
 
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -766,9 +770,9 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
 
     return (
         <div className="space-y-4">
-            {/* Toolbar */}
+            {/* Toolbar - same for both */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                {/* Search */}
+                {/* ... existing toolbar content ... */}
                 <div className="relative max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
                     <Input
@@ -809,129 +813,148 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
                         </Button>
                     )}
 
-                    {/* Column visibility */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="bg-[#161822] border-white/5 text-[#94A3B8] hover:bg-white/5 hover:text-white"
+                    {/* Column visibility - only on desktop */}
+                    {!isMobile && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-[#161822] border-white/5 text-[#94A3B8] hover:bg-white/5 hover:text-white"
+                                >
+                                    Colonnes
+                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                className="bg-[#161822] border-white/10"
                             >
-                                Colonnes
-                                <ChevronDown className="ml-2 h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align="end"
-                            className="bg-[#161822] border-white/10"
-                        >
-                            {table
-                                .getAllColumns()
-                                .filter((column) => column.getCanHide())
-                                .map((column) => {
-                                    const labels: Record<string, string> = {
-                                        name: 'Candidat',
-                                        classe: 'Classe',
-                                        spec: 'Spécialisation',
-                                        wlogs_ilvl: 'iLvl',
-                                        wlogs_score: 'Logs',
-                                        wlogs_mythic_plus_score: 'MM+',
-                                        wlogs_raid_progress: 'Progress',
-                                        approval_rate: 'Approbation',
-                                        status: 'Statut',
-                                        created_at: 'Date',
-                                    }
-                                    return (
-                                        <DropdownMenuCheckboxItem
-                                            key={column.id}
-                                            className="text-white hover:bg-white/5"
-                                            checked={column.getIsVisible()}
-                                            onCheckedChange={(value) =>
-                                                column.toggleVisibility(!!value)
-                                            }
-                                        >
-                                            {labels[column.id] || column.id}
-                                        </DropdownMenuCheckboxItem>
-                                    )
-                                })}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                {table
+                                    .getAllColumns()
+                                    .filter((column) => column.getCanHide())
+                                    .map((column) => {
+                                        const labels: Record<string, string> = {
+                                            name: 'Candidat',
+                                            classe: 'Classe',
+                                            spec: 'Spécialisation',
+                                            wlogs_ilvl: 'iLvl',
+                                            wlogs_score: 'Logs',
+                                            wlogs_mythic_plus_score: 'MM+',
+                                            wlogs_raid_progress: 'Progress',
+                                            approval_rate: 'Approbation',
+                                            status: 'Statut',
+                                            created_at: 'Date',
+                                        }
+                                        return (
+                                            <DropdownMenuCheckboxItem
+                                                key={column.id}
+                                                className="text-white hover:bg-white/5"
+                                                checked={column.getIsVisible()}
+                                                onCheckedChange={(value) =>
+                                                    column.toggleVisibility(!!value)
+                                                }
+                                            >
+                                                {labels[column.id] || column.id}
+                                            </DropdownMenuCheckboxItem>
+                                        )
+                                    })}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="rounded-3xl border border-white/5 bg-[#161822] overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow
-                                key={headerGroup.id}
-                                className="border-white/5 hover:bg-transparent"
-                            >
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead
-                                        key={header.id}
-                                        className="text-[#94A3B8] font-semibold h-12 text-left"
-                                    >
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.header,
-                                                header.getContext()
-                                            )}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
+            {/* Content Switch: Cards (Mobile) vs Table (Desktop) */}
+            {isMobile ? (
+                <div className="space-y-3 pb-20 md:pb-0">
+                    {table.getRowModel().rows.length > 0 ? (
+                        table.getRowModel().rows.map((row) => (
+                            <CandidateMobileCard
+                                key={row.original.id}
+                                candidate={row.original}
+                            />
+                        ))
+                    ) : (
+                        <div className="text-center py-8 text-[#94A3B8]">
+                            Aucune candidature trouvée.
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="rounded-3xl border border-white/5 bg-[#161822] overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            {table.getHeaderGroups().map((headerGroup) => (
                                 <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && 'selected'}
-                                    className="border-white/5 hover:bg-white/[0.02] cursor-pointer transition-colors h-14"
-                                    onClick={() =>
-                                        router.push(`/dashboard/candidates/${row.original.id}`)
-                                    }
+                                    key={headerGroup.id}
+                                    className="border-white/5 hover:bg-transparent"
                                 >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            className="py-3 text-left"
-                                            onClick={(e) => {
-                                                if (
-                                                    cell.column.id === 'select' ||
-                                                    cell.column.id === 'actions'
-                                                ) {
-                                                    e.stopPropagation()
-                                                }
-                                            }}
+                                    {headerGroup.headers.map((header) => (
+                                        <TableHead
+                                            key={header.id}
+                                            className="text-[#94A3B8] font-semibold h-12 text-left"
                                         >
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
-                                        </TableCell>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
+                                        </TableHead>
                                     ))}
                                 </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={columns.length}
-                                    className="h-24 text-center text-[#94A3B8]"
-                                >
-                                    Aucune candidature trouvée.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map((row) => (
+                                    <TableRow
+                                        key={row.id}
+                                        data-state={row.getIsSelected() && 'selected'}
+                                        className="border-white/5 hover:bg-white/[0.02] cursor-pointer transition-colors h-14"
+                                        onClick={() =>
+                                            router.push(`/dashboard/candidates/${row.original.id}`)
+                                        }
+                                    >
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell
+                                                key={cell.id}
+                                                className="py-3 text-left"
+                                                onClick={(e) => {
+                                                    if (
+                                                        cell.column.id === 'select' ||
+                                                        cell.column.id === 'actions'
+                                                    ) {
+                                                        e.stopPropagation()
+                                                    }
+                                                }}
+                                            >
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={columns.length}
+                                        className="h-24 text-center text-[#94A3B8]"
+                                    >
+                                        Aucune candidature trouvée.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
 
             {/* Pagination */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-2">
                 <p className="text-sm text-[#94A3B8]">
                     {table.getFilteredRowModel().rows.length} candidature(s)
                     {selectedIds.length > 0 && ` • ${selectedIds.length} sélectionnée(s)`}
@@ -958,8 +981,9 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
                 </div>
             </div>
 
-            {/* Delete Dialog */}
+            {/* Delete Dialog - Same */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                {/* ... existing dialog content ... */}
                 <AlertDialogContent className="bg-[#161822] border-white/10 text-white">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>

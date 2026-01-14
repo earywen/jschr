@@ -65,7 +65,7 @@ export function Sidebar({ user }: SidebarProps) {
     }
 
     return (
-        <aside className="flex h-full w-64 flex-col border-r border-white/5 bg-[#161822]">
+        <aside className="hidden md:flex h-full w-64 flex-col border-r border-white/5 bg-[#161822]">
             {/* Logo / Header */}
             <div className="flex h-16 items-center gap-3 border-b border-white/5 px-5">
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/5 border border-white/10 group-hover:border-primary/50 transition-all">

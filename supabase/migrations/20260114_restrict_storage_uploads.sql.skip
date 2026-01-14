@@ -1,0 +1,40 @@
+-- Restrict storage bucket uploads to authenticated users only
+-- This prevents anonymous users from flooding storage with unlimited uploads
+
+-- Drop the existing permissive policy (if it exists)
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Anyone can upload an image" ON storage.objects;
+    DROP POLICY IF EXISTS "Authenticated users can upload screenshots" ON storage.objects;
+EXCEPTION
+    WHEN undefined_table THEN
+        -- Storage objects table doesn't exist or policies don't exist
+        NULL;
+END $$;
+
+-- Create new policy requiring authentication
+CREATE POLICY IF NOT EXISTS "Authenticated users can upload screenshots" 
+ON storage.objects 
+FOR INSERT 
+WITH CHECK (
+    bucket_id = 'candidates-screenshots' 
+    AND auth.role() = 'authenticated'
+);
+
+-- Note: File size limits should be enforced at the application level
+-- Supabase Storage allows configuration of file size limits in the dashboard:
+-- Storage → Settings → Upload size limit
+
+-- Verification query
+SELECT 
+    policyname,
+    tablename,
+    permissive,
+    roles,
+    cmd,
+    qual,
+    with_check
+FROM pg_policies 
+WHERE tablename = 'objects' 
+AND policyname LIKE '%screenshot%'
+ORDER BY policyname;
