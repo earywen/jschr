@@ -1,5 +1,6 @@
 import { Shield, Settings as SettingsIcon, Bell, Users, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { RecruitmentSync } from '@/components/settings/recruitment-sync'
 
 function Card({
     children,
@@ -80,12 +81,7 @@ export default function SettingsPage() {
 
                 <Card>
                     <SectionHeader icon={Users}>Critères de Recrutement</SectionHeader>
-                    <p className="text-[#94A3B8] text-sm mb-4">
-                        Définissez les classes et spécialisations dont vous avez besoin.
-                    </p>
-                    <div className="rounded-2xl bg-white/5 p-4 text-center">
-                        <p className="text-xs text-[#94A3B8] italic">Bientôt disponible</p>
-                    </div>
+                    <RecruitmentSync />
                 </Card>
             </div>
         </div>
