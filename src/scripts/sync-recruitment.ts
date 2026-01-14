@@ -4,8 +4,8 @@ import puppeteer from 'puppeteer'
 import dotenv from 'dotenv'
 import { getClassIdFromName, WOW_SPECS, getSpecsByClass } from '../lib/data/wow-classes'
 
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' })
+// Load environment variables
+dotenv.config()
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     console.error('❌ Missing Supabase environment variables')
