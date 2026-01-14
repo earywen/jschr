@@ -133,6 +133,9 @@ export function getClassIdFromName(className: string): string | undefined {
         'druid': 'druid',
         'demon hunter': 'demon-hunter',
         'evoker': 'evoker',
+        // Common variations
+        'deathknight': 'death-knight',
+        'demonhunter': 'demon-hunter',
         // French
         'guerrier': 'warrior',
         'chasseur': 'hunter',
