@@ -22,10 +22,15 @@ const GUILD_URL = 'https://www.wowprogress.com/guild/eu/hyjal/Jet+Set+Club'
 async function syncRecruitment() {
     console.log('🚀 Starting WowProgress Recruitment Sync...')
 
-    // Launch browser in non-headless mode to likely bypass Cloudflare
+    // Launch browser in headless mode with stealth args to bypass Cloudflare
     const browser = await puppeteer.launch({
-        headless: false,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled'
+        ],
+        ignoreDefaultArgs: ['--enable-automation']
     })
 
     try {
