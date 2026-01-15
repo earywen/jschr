@@ -30,7 +30,7 @@ const PRIORITY_LABELS = {
 export function RecruitmentBoard() {
     const [needs, setNeeds] = useState<RecruitmentNeed[]>([])
     const [loading, setLoading] = useState(true)
-    const [activeTooltip, setActiveTooltip] = useState<number | null>(null)
+    const [activeTooltip, setActiveTooltip] = useState<number | string | null>(null)
 
     useEffect(() => {
         getRecruitmentNeeds().then(data => {
