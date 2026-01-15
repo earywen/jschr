@@ -14,14 +14,14 @@ export const characterSchema = z.object({
     warcraftlogsLink: z.string().url('URL invalide').optional().or(z.literal('')),
     screenshotUrl: z.string().optional(),
     avatarUrl: z.string().optional(),
-    raidExperience: z.string().min(20, 'Décrivez votre expérience de raid (minimum 20 caractères)'),
+    raidExperience: z.string().min(20, 'Décrivez votre expérience de raid (minimum 20 caractères)').max(1500, 'Maximum 1500 caractères'),
 })
 
 // Step 3: Motivation
 export const motivationSchema = z.object({
-    aboutMe: z.string().min(20, 'Parlez-nous un peu de vous (minimum 20 caractères)'),
-    whyJSC: z.string().min(20, 'Expliquez ce qui vous attire chez JSC (minimum 20 caractères)'),
-    motivation: z.string().min(50, 'Votre message doit contenir au moins 50 caractères').max(2000),
+    aboutMe: z.string().min(20, 'Parlez-nous un peu de vous (minimum 20 caractères)').max(1000, 'Maximum 1000 caractères'),
+    whyJSC: z.string().min(20, 'Expliquez ce qui vous attire chez JSC (minimum 20 caractères)').max(1000, 'Maximum 1000 caractères'),
+    motivation: z.string().min(50, 'Votre message doit contenir au moins 50 caractères').max(1500, 'Maximum 1500 caractères'),
 })
 
 // Combined schema for full application

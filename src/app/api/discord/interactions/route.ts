@@ -127,15 +127,59 @@ export async function POST(req: NextRequest) {
                     });
             }
 
-            // 3. Respond
-            const voteLabel = voteType === 'yes' ? 'Pour ✅' : voteType === 'no' ? 'Contre 🛑' : 'Neutre 😐';
+            // 3. Calculation of new vote counts
+            const { data: allVotes } = await supabaseAdmin
+                .from('votes')
+                .select('vote')
+                .eq('candidate_id', candidateId);
 
+            const counts = {
+                yes: 0,
+                neutral: 0,
+                no: 0
+            };
+
+            if (allVotes) {
+                allVotes.forEach((v) => {
+                    if (v.vote === 'yes') counts.yes++;
+                    else if (v.vote === 'neutral') counts.neutral++;
+                    else if (v.vote === 'no') counts.no++;
+                });
+            }
+
+            // 4. Respond with updated message (Update buttons)
             return NextResponse.json({
-                type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                type: 7, // InteractionResponseType.UPDATE_MESSAGE
                 data: {
-                    content: `✅ Vote enregistré : **${voteLabel}**`,
-                    flags: 64, // Ephemeral
-                },
+                    components: [
+                        {
+                            type: 1, // Action Row
+                            components: [
+                                {
+                                    type: 2, // Button
+                                    style: 3, // Success
+                                    label: `Pour (${counts.yes})`,
+                                    emoji: { name: '✅' },
+                                    custom_id: `vote:${candidateId}:yes`
+                                },
+                                {
+                                    type: 2, // Button
+                                    style: 2, // Secondary
+                                    label: `Neutre (${counts.neutral})`,
+                                    emoji: { name: '😐' },
+                                    custom_id: `vote:${candidateId}:neutral`
+                                },
+                                {
+                                    type: 2, // Button
+                                    style: 4, // Danger
+                                    label: `Contre (${counts.no})`,
+                                    emoji: { name: '🛑' },
+                                    custom_id: `vote:${candidateId}:no`
+                                }
+                            ]
+                        }
+                    ]
+                }
             });
         }
     }

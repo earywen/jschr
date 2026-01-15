@@ -74,6 +74,12 @@ const CLASS_COLORS: Record<string, number> = {
     mage: 0x40C7EB,
     warlock: 0x8787ED,
     druid: 0xFF7D0A,
+    // Add missing classes for safety, defaulting to gray if unknown
+    shaman: 0x0070DE,
+    demonhunter: 0xA330C9,
+    deathknight: 0xC41E3A,
+    monk: 0x00FF96,
+    evoker: 0x33937F,
 }
 
 // Helper to get emoji based on performance/score
@@ -117,27 +123,63 @@ export async function notifyNewCandidate(
         avatarUrl?: string | null
     }
 ): Promise<boolean> {
-    const classColor = CLASS_COLORS[className.toLowerCase()] || 0x5865F2
+    const classColor = CLASS_COLORS[className.toLowerCase().replace(/\s/g, '')] || 0x5865F2
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`
 
-    const fields = [
+    const fields: DiscordEmbed['fields'] = []
+
+    // Helper to add split fields
+    const addSplitField = (name: string, value: string, inline: boolean = false) => {
+        if (value.length <= 1024) {
+            fields!.push({ name, value, inline })
+            return
+        }
+
+        // Split logic
+        const chunks = []
+        let remaining = value
+        const maxLength = 1000 // Leave a small buffer for safety
+
+        while (remaining.length > 0) {
+            let chunk = remaining.substring(0, maxLength)
+            // Try not to cut words
+            if (remaining.length > maxLength) {
+                const verifiedLastSpace = chunk.lastIndexOf(' ')
+                if (verifiedLastSpace > 0) {
+                    chunk = remaining.substring(0, verifiedLastSpace)
+                }
+            }
+            chunks.push(chunk)
+            remaining = remaining.substring(chunk.length).trim()
+        }
+
+        chunks.forEach((chunk, index) => {
+            fields!.push({
+                name: `${name} (${index + 1}/${chunks.length})`,
+                value: chunk,
+                inline: false
+            })
+        })
+    }
+
+    fields.push(
         {
-            name: '⚔️ Classe',
+            name: 'Classe',
             value: className,
             inline: true,
         },
         {
-            name: '🎯 Spécialisation',
+            name: 'Spécialisation',
             value: specName,
             inline: true,
-        },
-    ]
+        }
+    )
 
     // Add stats row if available
     if (data?.ilvl) {
         fields.push({
-            name: '🛡️ iLvl',
+            name: 'iLvl',
             value: `**${data.ilvl}**`,
             inline: true,
         })
@@ -145,18 +187,15 @@ export async function notifyNewCandidate(
 
     if (data?.progress) {
         fields.push({
-            name: '🏰 Raid',
+            name: 'Raid',
             value: `**${data.progress}**`,
             inline: true,
         })
     }
 
-    // Force a line break if needed or let Discord wrap, but usually 3 per line.
-    // To ensure specific grid, we can stick to simple inline order.
-
     if (data?.bestPerfAvg !== undefined && data?.bestPerfAvg !== null) {
         fields.push({
-            name: '📊 Best Avg',
+            name: 'Best Avg',
             value: `${getPerfEmoji(data.bestPerfAvg, 'parse')} **${Math.round(data.bestPerfAvg)}%**`,
             inline: true,
         })
@@ -164,54 +203,30 @@ export async function notifyNewCandidate(
 
     if (data?.score) {
         fields.push({
-            name: '🔑 Score MM+',
+            name: 'Score MM+',
             value: `${getPerfEmoji(data.score, 'score')} **${Math.round(data.score)}**`,
             inline: true,
         })
     }
 
-
-
-    // Text Fields
-    // Helper to truncate text
-    const truncate = (str: string, max: number) => str.length > max ? str.substring(0, max) + '...' : str
-
-    fields.push({
-        name: '📜 Expérience XP / Guildes',
-        value: truncate(raidExperience, 1024),
-        inline: false,
-    })
-
-    fields.push({
-        name: '👤 À propos',
-        value: truncate(aboutMe, 1024),
-        inline: false,
-    })
-
-    fields.push({
-        name: '🎯 Pourquoi JSC ?',
-        value: truncate(whyJSC, 1024),
-        inline: false,
-    })
-
-    fields.push({
-        name: '💬 Mot de la fin',
-        value: truncate(motivation, 1024),
-        inline: false,
-    })
+    // Text Fields with splitting logic
+    addSplitField('Expérience XP / Guildes', raidExperience)
+    addSplitField('À propos', aboutMe)
+    addSplitField('Pourquoi JSC ?', whyJSC)
+    addSplitField('Mot de la fin', motivation)
 
     // Add links row (Moved to end)
     let linksValue = `[Dashboard](${dashboardLink})`
     if (data?.wlogsLink) linksValue += ` • [WarcraftLogs](${data.wlogsLink})`
 
     fields.push({
-        name: '🔗 Liens',
+        name: 'Liens',
         value: linksValue,
         inline: false,
     })
 
     const embed: DiscordEmbed = {
-        title: '📥 Nouvelle Candidature !',
+        title: 'Nouvelle Candidature',
         description: `**${candidateName}** a postulé pour rejoindre la guilde.`,
         color: classColor,
         fields: fields,

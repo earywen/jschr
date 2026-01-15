@@ -30,6 +30,7 @@ const PRIORITY_LABELS = {
 export function RecruitmentBoard() {
     const [needs, setNeeds] = useState<RecruitmentNeed[]>([])
     const [loading, setLoading] = useState(true)
+    const [activeTooltip, setActiveTooltip] = useState<number | null>(null)
 
     useEffect(() => {
         getRecruitmentNeeds().then(data => {
@@ -69,13 +70,23 @@ export function RecruitmentBoard() {
                         {WOW_CLASSES.map((wowClass) => {
                             const classNeeds = needsByClass[wowClass.name] || []
                             const isActive = classNeeds.length > 0
+                            const isTooltipOpen = activeTooltip === wowClass.id
 
                             return (
-                                <Tooltip key={wowClass.id}>
+                                <Tooltip
+                                    key={wowClass.id}
+                                    open={isTooltipOpen}
+                                    onOpenChange={(open) => {
+                                        if (!open) setActiveTooltip(null)
+                                    }}
+                                >
                                     <TooltipTrigger asChild>
                                         <div
+                                            onClick={() => setActiveTooltip(isTooltipOpen ? null : wowClass.id)}
+                                            onMouseEnter={() => setActiveTooltip(wowClass.id)}
+                                            onMouseLeave={() => setActiveTooltip(null)}
                                             className={`
-                                                relative cursor-default transition-all duration-300 rounded-xl p-1
+                                                relative cursor-pointer transition-all duration-300 rounded-xl p-1
                                                 ${isActive
                                                     ? 'opacity-100 hover:scale-110 hover:z-10'
                                                     : 'opacity-20 grayscale hover:opacity-40'
@@ -106,7 +117,7 @@ export function RecruitmentBoard() {
                                     </TooltipTrigger>
 
                                     {isActive && (
-                                        <TooltipContent side="bottom" className="border-zinc-800 bg-zinc-950/95 text-zinc-100 backdrop-blur-xl p-3 shadow-2xl">
+                                        <TooltipContent side="bottom" className="border-zinc-800 bg-zinc-950/95 text-zinc-100 backdrop-blur-xl p-3 shadow-2xl z-50">
                                             <div className="space-y-3 min-w-[200px]">
                                                 {/* Tooltip Header */}
                                                 <div className="flex items-center gap-2 border-b border-white/5 pb-2">
