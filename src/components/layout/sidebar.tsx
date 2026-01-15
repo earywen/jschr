@@ -19,6 +19,7 @@ interface SidebarProps {
         id: string
         email: string
         role: 'pending' | 'member' | 'officer' | 'gm'
+        discordUsername?: string
     }
 }
 
@@ -84,7 +85,7 @@ export function Sidebar({ user }: SidebarProps) {
             {/* User Info */}
             <div className="border-b border-white/5 px-5 py-4">
                 <p className="truncate text-sm font-medium text-white">
-                    {user.email}
+                    {user.discordUsername || user.email}
                 </p>
                 <p className={cn('text-xs font-semibold mt-1', roleColors[user.role])}>
                     {roleLabels[user.role]}

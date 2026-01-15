@@ -9,6 +9,7 @@ export interface UserWithRole {
     id: string
     email: string
     role: UserRole
+    discordUsername?: string
 }
 
 /**
@@ -37,7 +38,13 @@ export async function getUserRole(): Promise<UserWithRole | null> {
         return null
     }
 
-    return member as UserWithRole
+    // Extract Discord username from auth metadata
+    const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name || member.email
+
+    return {
+        ...member,
+        discordUsername
+    } as UserWithRole
 }
 
 /**
