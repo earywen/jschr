@@ -27,19 +27,16 @@ const PRIORITY_LABELS = {
     closed: 'Fermé'
 }
 
-export function RecruitmentBoard() {
-    const [needs, setNeeds] = useState<RecruitmentNeed[]>([])
-    const [loading, setLoading] = useState(true)
-    const [activeTooltip, setActiveTooltip] = useState<number | string | null>(null)
+interface RecruitmentBoardProps {
+    initialNeeds: RecruitmentNeed[]
+}
 
-    useEffect(() => {
-        getRecruitmentNeeds().then(data => {
-            setNeeds(data)
-            setLoading(false)
-        })
-    }, [])
+export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
+    const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
+    const needs = initialNeeds
 
-    if (loading) return null
+
+
 
     // Group needs by Class Name to easily find active classes
     const needsByClass = needs.reduce((acc, need) => {
