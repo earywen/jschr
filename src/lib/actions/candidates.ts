@@ -225,7 +225,223 @@ export async function deleteCandidates(candidateIds: string[]): Promise<SubmitAp
         return { success: false, error: 'Erreur lors de la suppression multiple' }
     }
 
-    revalidatePath('/dashboard/candidates')
     return { success: true }
+}
+
+export async function createManualCandidate(
+    data: import('@/lib/validations/manual-candidate').ManualCandidateFormData
+): Promise<SubmitApplicationResult> {
+    const { manualCandidateSchema } = await import('@/lib/validations/manual-candidate')
+
+    // Validate input
+    const parsed = manualCandidateSchema.safeParse(data)
+    if (!parsed.success) {
+        return {
+            success: false,
+            error: 'Données invalides: ' + parsed.error.issues.map(i => i.message).join(', '),
+        }
+    }
+
+    const supabase = await createClient()
+
+    // Check authentication and role
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Non authentifié' }
+    }
+
+    const { data: member } = await supabase
+        .from('members')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (!member || (member.role !== 'officer' && member.role !== 'gm')) {
+        return { success: false, error: 'Action non autorisée (Officers/GM uniquement)' }
+    }
+
+    // Look up the class UUID from the database
+    const { data: wowClass, error: classError } = await supabase
+        .from('wow_classes')
+        .select('id')
+        .eq('id', parsed.data.classId)
+        .single()
+
+    if (classError || !wowClass) {
+        return {
+            success: false,
+            error: 'Classe non trouvée',
+        }
+    }
+
+    // Look up the spec UUID
+    const { data: wowSpec, error: specError } = await supabase
+        .from('wow_specs')
+        .select('id')
+        .eq('id', parsed.data.specId)
+        .single()
+
+    if (specError || !wowSpec) {
+        return {
+            success: false,
+            error: 'Spécialisation non trouvée',
+        }
+    }
+
+    // Auto-fetch avatar from Blizzard API if WarcraftLogs link provided
+    let avatarUrl = parsed.data.avatarUrl || null
+    if (parsed.data.warcraftlogsLink && !avatarUrl) {
+        try {
+            const { fetchAvatarFromWarcraftLogsUrl } = await import('@/lib/api/blizzard')
+            const fetchedAvatar = await fetchAvatarFromWarcraftLogsUrl(parsed.data.warcraftlogsLink)
+            if (fetchedAvatar) {
+                avatarUrl = fetchedAvatar
+            }
+        } catch (e) {
+            // Silently fail - Avatar fetch is not critical
+            console.error('Blizzard avatar auto-fetch failed:', e)
+        }
+    }
+
+    // Insert candidate using admin client to bypass RLS
+    const adminSupabase = createAdminClient()
+    const { data: candidate, error: insertError } = await adminSupabase
+        .from('candidates')
+        .insert({
+            name: parsed.data.name,
+            battle_tag: parsed.data.battleTag || null,
+            discord_id: parsed.data.discordId || null,
+            class_id: wowClass.id,
+            spec_id: wowSpec.id,
+            warcraftlogs_link: parsed.data.warcraftlogsLink || null,
+            screenshot_url: parsed.data.screenshotUrl || null,
+            avatar_url: avatarUrl,
+            raid_experience: parsed.data.raidExperience || null,
+            about_me: parsed.data.aboutMe || null,
+            why_jsc: parsed.data.whyJSC || null,
+            motivation: parsed.data.motivation,
+            user_id: null, // Manual candidates are not linked to a user
+            status: parsed.data.status || 'pending',
+        })
+        .select('id')
+        .single()
+
+    if (insertError) {
+        console.error('Insert error:', insertError)
+        return {
+            success: false,
+            error: `Erreur lors de la création: ${insertError.message || JSON.stringify(insertError)}`,
+        }
+    }
+
+    // Auto-fetch WarcraftLogs data if link provided
+    if (parsed.data.warcraftlogsLink) {
+        try {
+            const wlogsData = await fetchWarcraftLogsData(parsed.data.warcraftlogsLink)
+
+            if (wlogsData.bestPerfAvg !== null || wlogsData.mythicPlusScore !== null) {
+                await updateCandidateWlogsData(
+                    candidate.id,
+                    wlogsData.bestPerfAvg,
+                    wlogsData.color,
+                    wlogsData.mythicPlusScore,
+                    wlogsData.ilvl ?? null,
+                    wlogsData.raidProgress ?? null
+                )
+            }
+        } catch (e) {
+            // Silently fail - WarcraftLogs fetch is not critical
+            console.error('WarcraftLogs auto-fetch failed:', e)
+        }
+    }
+
+    // NOTE: We do NOT send Discord notification for manual candidates
+    // as these are pre-existing applications
+
+    revalidatePath('/dashboard/candidates')
+
+    return {
+        success: true,
+        candidateId: candidate.id,
+    }
+}
+
+export async function resendCandidateNotification(
+    candidateId: string
+): Promise<SubmitApplicationResult> {
+    const supabase = await createClient()
+
+    // Check authentication and role
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Non authentifié' }
+    }
+
+    const { data: member } = await supabase
+        .from('members')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (member?.role !== 'gm') {
+        return { success: false, error: 'Action non autorisée (GM uniquement)' }
+    }
+
+    // Fetch candidate with all details
+    const { data: candidate, error: candidateError } = await supabase
+        .from('candidates')
+        .select(`
+            *,
+            wow_class:wow_classes(id, name, color),
+            wow_spec:wow_specs(id, name, role)
+        `)
+        .eq('id', candidateId)
+        .single()
+
+    if (candidateError || !candidate) {
+        return {
+            success: false,
+            error: 'Candidature non trouvée',
+        }
+    }
+
+    // Send Discord notification
+    const notificationSent = await notifyNewCandidate(
+        candidate.id,
+        candidate.name,
+        candidate.wow_class?.name || 'Inconnu',
+        candidate.wow_spec?.name || 'Inconnu',
+        candidate.raid_experience || '',
+        candidate.about_me || '',
+        candidate.why_jsc || '',
+        candidate.motivation || '',
+        {
+            ilvl: (candidate as any).wlogs_ilvl,
+            score: (candidate as any).wlogs_mythic_plus_score,
+            progress: (candidate as any).wlogs_raid_progress,
+            bestPerfAvg: candidate.wlogs_score,
+            wlogsLink: candidate.warcraftlogs_link,
+            screenshotUrl: candidate.screenshot_url,
+            avatarUrl: candidate.avatar_url,
+        }
+    )
+
+    if (!notificationSent) {
+        return {
+            success: false,
+            error: 'Erreur lors de l\'envoi de la notification Discord',
+        }
+    }
+
+    return {
+        success: true,
+        candidateId: candidate.id,
+    }
 }
 

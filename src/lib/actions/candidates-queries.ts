@@ -111,3 +111,35 @@ export async function getCandidateStats(): Promise<{
         waitlist: waitlist || 0,
     }
 }
+
+export async function getWowClasses() {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('wow_classes')
+        .select('id, name, color')
+        .order('name')
+
+    if (error) {
+        console.error('Error fetching classes:', error)
+        return []
+    }
+
+    return data || []
+}
+
+export async function getWowSpecs() {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('wow_specs')
+        .select('id, name, class_id')
+        .order('name')
+
+    if (error) {
+        console.error('Error fetching specs:', error)
+        return []
+    }
+
+    return data || []
+}
