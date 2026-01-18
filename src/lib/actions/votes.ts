@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/auth/role'
 import { Database } from '@/types/database.types'
 import { revalidatePath } from 'next/cache'
@@ -97,7 +97,7 @@ export interface VoteSynthesis {
 export async function getVoteSynthesis(
     candidateId: string
 ): Promise<VoteSynthesis> {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
     const { data } = await supabase
         .from('votes')

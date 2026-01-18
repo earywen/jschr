@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { Database } from '@/types/database.types'
 
 type Candidate = Database['public']['Tables']['candidates']['Row']
@@ -50,7 +50,8 @@ export async function getCandidates(
 
     // Récupérer les votes pour calculer le taux d'approbation
     const candidateIds = data.map(c => c.id)
-    const { data: votesData } = await supabase
+    const supabaseAdmin = await createAdminClient()
+    const { data: votesData } = await supabaseAdmin
         .from('votes')
         .select('candidate_id, vote')
         .in('candidate_id', candidateIds)
