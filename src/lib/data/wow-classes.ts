@@ -83,7 +83,7 @@ export const WOW_SPECS: WowSpec[] = [
 
     // Monk
     { id: 'monk-brewmaster', classId: 'monk', name: 'Brewmaster', nameFr: 'Maître brasseur', role: 'tank', icon: 'spell_monk_brewmaster' },
-    { id: 'monk-mistweaver', classId: 'monk', name: 'Mistweaver', nameFr: 'Tisse-brume', role: 'healer', icon: 'spell_monk_mistweaver' },
+    { id: 'monk-mistweaver', classId: 'monk', name: 'Mistweaver', nameFr: 'Tisse-brume', role: 'healer', icon: 'spell_monk_mistweaver_spec' },
     { id: 'monk-windwalker', classId: 'monk', name: 'Windwalker', nameFr: 'Marche-vent', role: 'dps', icon: 'spell_monk_windwalker_spec' },
 
     // Druid

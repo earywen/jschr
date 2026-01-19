@@ -39,6 +39,7 @@ export async function POST() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'User-Agent': 'JSC-HR-App/1.0',
             },
             body: JSON.stringify({
                 trigger: 'manual',
