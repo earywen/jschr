@@ -127,42 +127,34 @@ export async function notifyNewCandidate(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`
 
-    const fields: DiscordEmbed['fields'] = []
+    // Build description with all text content
+    let description = `**${candidateName}** a postulé pour rejoindre la guilde.\n\n`
 
-    // Helper to add split fields
-    const addSplitField = (name: string, value: string, inline: boolean = false) => {
-        if (value.length <= 1024) {
-            fields!.push({ name, value, inline })
-            return
-        }
-
-        // Split logic
-        const chunks = []
-        let remaining = value
-        const maxLength = 1000 // Leave a small buffer for safety
-
-        while (remaining.length > 0) {
-            let chunk = remaining.substring(0, maxLength)
-            // Try not to cut words
-            if (remaining.length > maxLength) {
-                const verifiedLastSpace = chunk.lastIndexOf(' ')
-                if (verifiedLastSpace > 0) {
-                    chunk = remaining.substring(0, verifiedLastSpace)
-                }
-            }
-            chunks.push(chunk)
-            remaining = remaining.substring(chunk.length).trim()
-        }
-
-        chunks.forEach((chunk, index) => {
-            fields!.push({
-                name: `${name} (${index + 1}/${chunks.length})`,
-                value: chunk,
-                inline: false
-            })
-        })
+    // Add text sections to description (more compact, uses full width)
+    if (raidExperience) {
+        description += `**Expérience XP / Guildes**\n${raidExperience}\n\n`
     }
 
+    if (aboutMe) {
+        description += `**À propos**\n${aboutMe}\n\n`
+    }
+
+    if (whyJSC) {
+        description += `**Pourquoi JSC ?**\n${whyJSC}\n\n`
+    }
+
+    if (motivation) {
+        description += `**Mot de la fin**\n${motivation}\n\n`
+    }
+
+    // Trim description if too long (Discord limit: 4096 chars)
+    if (description.length > 4000) {
+        description = description.substring(0, 3997) + '...'
+    }
+
+    const fields: DiscordEmbed['fields'] = []
+
+    // Stats row - all inline for horizontal layout
     fields.push(
         {
             name: 'Classe',
@@ -176,7 +168,6 @@ export async function notifyNewCandidate(
         }
     )
 
-    // Add stats row if available
     if (data?.ilvl) {
         fields.push({
             name: 'iLvl',
@@ -209,15 +200,10 @@ export async function notifyNewCandidate(
         })
     }
 
-    // Text Fields with splitting logic
-    addSplitField('Expérience XP / Guildes', raidExperience)
-    addSplitField('À propos', aboutMe)
-    addSplitField('Pourquoi JSC ?', whyJSC)
-    addSplitField('Mot de la fin', motivation)
-
-    // Add links row (Moved to end)
+    // Add links at the end
     let linksValue = `[Dashboard](${dashboardLink})`
     if (data?.wlogsLink) linksValue += ` • [WarcraftLogs](${data.wlogsLink})`
+    if (data?.screenshotUrl) linksValue += ` • [Voir l'UI](${data.screenshotUrl})`
 
     fields.push({
         name: 'Liens',
@@ -227,7 +213,7 @@ export async function notifyNewCandidate(
 
     const embed: DiscordEmbed = {
         title: 'Nouvelle Candidature',
-        description: `**${candidateName}** a postulé pour rejoindre la guilde.`,
+        description: description,
         color: classColor,
         fields: fields,
         footer: {
@@ -240,13 +226,6 @@ export async function notifyNewCandidate(
     if (data?.avatarUrl) {
         embed.thumbnail = {
             url: data.avatarUrl,
-        }
-    }
-
-    // Add large image if screenshot available
-    if (data?.screenshotUrl) {
-        embed.image = {
-            url: data.screenshotUrl,
         }
     }
 
