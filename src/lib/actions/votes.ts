@@ -4,12 +4,45 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/auth/role'
 import { Database } from '@/types/database.types'
 import { revalidatePath } from 'next/cache'
+import { updateDiscordMessage } from '@/lib/discord/notifications'
 
 type VoteType = Database['public']['Enums']['vote_type']
 
 export interface CastVoteResult {
     success: boolean
     error?: string
+}
+
+// Helper to create vote button components with counts
+function createVoteButtons(candidateId: string, counts: { yes: number; neutral: number; no: number }) {
+    return [
+        {
+            type: 1, // Action Row
+            components: [
+                {
+                    type: 2, // Button
+                    style: 3, // Success (Green)
+                    label: `Pour (${counts.yes})`,
+                    emoji: { name: '✅' },
+                    custom_id: `vote:${candidateId}:yes`
+                },
+                {
+                    type: 2, // Button
+                    style: 2, // Secondary (Grey)
+                    label: `Neutre (${counts.neutral})`,
+                    emoji: { name: '😐' },
+                    custom_id: `vote:${candidateId}:neutral`
+                },
+                {
+                    type: 2, // Button
+                    style: 4, // Danger (Red)
+                    label: `Contre (${counts.no})`,
+                    emoji: { name: '🛑' },
+                    custom_id: `vote:${candidateId}:no`
+                }
+            ]
+        }
+    ]
 }
 
 export async function castVote(
@@ -27,6 +60,7 @@ export async function castVote(
     }
 
     const supabase = await createClient()
+    const supabaseAdmin = createAdminClient()
 
     // Check if user already voted
     const { data: existingVote } = await supabase
@@ -63,6 +97,36 @@ export async function castVote(
         }
     }
 
+    // Sync Discord message with new vote counts
+    const { data: candidate } = await supabaseAdmin
+        .from('candidates')
+        .select('discord_message_id')
+        .eq('id', candidateId)
+        .single()
+
+    if (candidate?.discord_message_id) {
+        // Get updated vote counts
+        const { data: allVotes } = await supabaseAdmin
+            .from('votes')
+            .select('vote')
+            .eq('candidate_id', candidateId)
+
+        const counts = { yes: 0, neutral: 0, no: 0 }
+        if (allVotes) {
+            allVotes.forEach((v) => {
+                if (v.vote === 'yes') counts.yes++
+                else if (v.vote === 'neutral') counts.neutral++
+                else if (v.vote === 'no') counts.no++
+            })
+        }
+
+        // Update Discord message buttons
+        await updateDiscordMessage(
+            candidate.discord_message_id,
+            createVoteButtons(candidateId, counts)
+        )
+    }
+
     revalidatePath(`/dashboard/candidates/${candidateId}`)
 
     return { success: true }
@@ -97,7 +161,7 @@ export interface VoteSynthesis {
 export async function getVoteSynthesis(
     candidateId: string
 ): Promise<VoteSynthesis> {
-    const supabase = await createAdminClient()
+    const supabase = createAdminClient()
 
     const { data } = await supabase
         .from('votes')
@@ -113,3 +177,4 @@ export async function getVoteSynthesis(
 
     return { total, yes, no, neutral, approvalRate }
 }
+

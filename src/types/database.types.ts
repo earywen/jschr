@@ -47,6 +47,7 @@ export type Database = {
           class_id: string
           created_at: string
           discord_id: string | null
+          discord_message_id: string | null
           id: string
           level: number | null
           motivation: string | null
@@ -71,6 +72,7 @@ export type Database = {
           class_id: string
           created_at?: string
           discord_id?: string | null
+          discord_message_id?: string | null
           id?: string
           level?: number | null
           motivation?: string | null
@@ -95,6 +97,7 @@ export type Database = {
           class_id?: string
           created_at?: string
           discord_id?: string | null
+          discord_message_id?: string | null
           id?: string
           level?: number | null
           motivation?: string | null

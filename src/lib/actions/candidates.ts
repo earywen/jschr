@@ -123,8 +123,8 @@ export async function submitApplication(
         }
     }
 
-    // Send Discord webhook notification
-    await notifyNewCandidate(
+    // Send Discord webhook notification and store message ID for vote sync
+    const discordMessageId = await notifyNewCandidate(
         candidate.id,
         parsed.data.characterName,
         getClassNameFromId(parsed.data.classId),
@@ -143,6 +143,14 @@ export async function submitApplication(
             avatarUrl: parsed.data.avatarUrl
         }
     )
+
+    // Store Discord message ID for future vote sync
+    if (discordMessageId) {
+        await adminSupabase
+            .from('candidates')
+            .update({ discord_message_id: discordMessageId })
+            .eq('id', candidate.id)
+    }
 
     revalidatePath('/dashboard/candidates')
 
@@ -412,7 +420,7 @@ export async function resendCandidateNotification(
     }
 
     // Send Discord notification
-    const notificationSent = await notifyNewCandidate(
+    const discordMessageId = await notifyNewCandidate(
         candidate.id,
         candidate.name,
         candidate.wow_class?.name || 'Inconnu',
@@ -432,12 +440,19 @@ export async function resendCandidateNotification(
         }
     )
 
-    if (!notificationSent) {
+    if (!discordMessageId) {
         return {
             success: false,
             error: 'Erreur lors de l\'envoi de la notification Discord',
         }
     }
+
+    // Store Discord message ID for future vote sync
+    const adminSupabase = createAdminClient()
+    await adminSupabase
+        .from('candidates')
+        .update({ discord_message_id: discordMessageId })
+        .eq('id', candidate.id)
 
     return {
         success: true,

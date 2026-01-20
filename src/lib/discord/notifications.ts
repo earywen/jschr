@@ -28,13 +28,14 @@ interface DiscordWebhookPayload {
 }
 
 // Updated to use Bot API for Interactive Components
-export async function sendDiscordNotification(payload: DiscordWebhookPayload): Promise<boolean> {
+// Returns the message ID on success, null on failure
+export async function sendDiscordNotification(payload: DiscordWebhookPayload): Promise<string | null> {
     const botToken = process.env.DISCORD_BOT_TOKEN
     const channelId = process.env.DISCORD_CHANNEL_ID
 
     if (!botToken || !channelId) {
         console.warn('Discord Bot Token or Channel ID not configured')
-        return false
+        return null
     }
 
     try {
@@ -54,12 +55,51 @@ export async function sendDiscordNotification(payload: DiscordWebhookPayload): P
 
         if (!response.ok) {
             console.error('Discord API failed:', response.status, await response.text())
+            return null
+        }
+
+        const data = await response.json()
+        return data.id || null // Return the Discord message ID
+    } catch (error) {
+        console.error('Discord API error:', error)
+        return null
+    }
+}
+
+// Update an existing Discord message (for vote sync)
+export async function updateDiscordMessage(
+    messageId: string,
+    components: any[]
+): Promise<boolean> {
+    const botToken = process.env.DISCORD_BOT_TOKEN
+    const channelId = process.env.DISCORD_CHANNEL_ID
+
+    if (!botToken || !channelId || !messageId) {
+        console.warn('Discord Bot Token, Channel ID, or Message ID not configured')
+        return false
+    }
+
+    try {
+        const response = await fetch(
+            `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bot ${botToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ components }),
+            }
+        )
+
+        if (!response.ok) {
+            console.error('Discord API update failed:', response.status, await response.text())
             return false
         }
 
         return true
     } catch (error) {
-        console.error('Discord API error:', error)
+        console.error('Discord API update error:', error)
         return false
     }
 }
@@ -104,6 +144,7 @@ function getPerfEmoji(value: number, type: 'parse' | 'score' = 'parse'): string 
     }
 }
 
+// Returns the Discord message ID on success, null on failure
 export async function notifyNewCandidate(
     candidateId: string,
     candidateName: string,
@@ -122,7 +163,7 @@ export async function notifyNewCandidate(
         screenshotUrl?: string | null
         avatarUrl?: string | null
     }
-): Promise<boolean> {
+): Promise<string | null> {
     const classColor = CLASS_COLORS[className.toLowerCase().replace(/\s/g, '')] || 0x5865F2
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`
