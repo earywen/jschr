@@ -71,6 +71,14 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import { updateCandidatesStatus } from '@/lib/actions/candidates'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STATUS CONFIG
@@ -691,6 +699,11 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
     const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null)
     const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
     const [isDeleting, setIsDeleting] = React.useState(false)
+    const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false)
+    const [pagination, setPagination] = React.useState({
+        pageIndex: 0,
+        pageSize: 14, // Default value from previous code (implied)
+    })
 
     const handleDelete = (id: string) => {
         setDeleteTargetId(id)
@@ -759,12 +772,14 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
         globalFilterFn: 'includesString',
+        onPaginationChange: setPagination,
         state: {
             sorting,
             columnFilters,
             columnVisibility,
             rowSelection,
             globalFilter,
+            pagination,
         },
     })
 
@@ -792,6 +807,27 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
             setIsDeleting(false)
             setShowDeleteDialog(false)
             setDeleteTargetId(null)
+        }
+    }
+
+
+    const handleBulkStatusUpdate = async (status: string) => {
+        if (selectedIds.length === 0) return
+
+        setIsUpdatingStatus(true)
+        try {
+            const result = await updateCandidatesStatus(selectedIds, status)
+            if (result.success) {
+                toast.success(`${selectedIds.length} statut(s) mis à jour`)
+                setRowSelection({})
+                router.refresh()
+            } else {
+                toast.error(result.error || 'Erreur lors de la mise à jour')
+            }
+        } catch {
+            toast.error('Une erreur est survenue')
+        } finally {
+            setIsUpdatingStatus(false)
         }
     }
 
@@ -829,20 +865,56 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
                         </Button>
                     )}
 
-                    {/* Bulk delete */}
+                    {/* Bulk Actions */}
                     {selectedIds.length > 0 && isGM && (
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                                setDeleteTargetId(null)
-                                setShowDeleteDialog(true)
-                            }}
-                            className="gap-2 bg-red-600 hover:bg-red-500"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                            Supprimer ({selectedIds.length})
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isUpdatingStatus}
+                                        className="gap-2 bg-[#161822] border-white/5 text-white hover:bg-white/5"
+                                    >
+                                        Statut ({selectedIds.length})
+                                        <ChevronDown className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-[#161822] border-white/10">
+                                    <DropdownMenuLabel className="text-[#94A3B8]">Changer le statut</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className="bg-white/5" />
+                                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate('accepted')} className="text-emerald-400 hover:bg-emerald-500/10 cursor-pointer">
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Acceptée
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate('rejected')} className="text-red-400 hover:bg-red-500/10 cursor-pointer">
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Refusée
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate('waitlist')} className="text-[#4361EE] hover:bg-[#4361EE]/10 cursor-pointer">
+                                        <Pause className="mr-2 h-4 w-4" />
+                                        Waitlist
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleBulkStatusUpdate('pending')} className="text-amber-400 hover:bg-amber-500/10 cursor-pointer">
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        En attente
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                    setDeleteTargetId(null)
+                                    setShowDeleteDialog(true)
+                                }}
+                                className="gap-2 bg-red-600 hover:bg-red-500"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Supprimer ({selectedIds.length})
+                            </Button>
+                        </div>
                     )}
 
                     {/* Column visibility - only on desktop */}
@@ -991,6 +1063,28 @@ export function CandidatesDataTable({ candidates, userRole }: DataTableProps) {
                     {table.getFilteredRowModel().rows.length} candidature(s)
                     {selectedIds.length > 0 && ` • ${selectedIds.length} sélectionnée(s)`}
                 </p>
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-[#94A3B8]">Lignes par page</p>
+                        <Select
+                            value={`${table.getState().pagination.pageSize}`}
+                            onValueChange={(value) => {
+                                table.setPageSize(Number(value))
+                            }}
+                        >
+                            <SelectTrigger className="h-8 w-[70px] bg-[#161822] border-white/5 text-white">
+                                <SelectValue placeholder={table.getState().pagination.pageSize} />
+                            </SelectTrigger>
+                            <SelectContent side="top" className="bg-[#161822] border-white/10 text-white">
+                                {[10, 20, 30, 50, 100].map((pageSize) => (
+                                    <SelectItem key={pageSize} value={`${pageSize}`} className="cursor-pointer hover:bg-white/5">
+                                        {pageSize}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"

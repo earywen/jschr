@@ -460,3 +460,49 @@ export async function resendCandidateNotification(
     }
 }
 
+
+export async function updateCandidatesStatus(
+    candidateIds: string[],
+    newStatus: string
+): Promise<SubmitApplicationResult> {
+    const supabase = await createClient()
+
+    // 1. Check authentication and role
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Non authentifié' }
+    }
+
+    const { data: member } = await supabase
+        .from('members')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (member?.role !== 'gm') {
+        return { success: false, error: 'Action non autorisée (GM uniquement)' }
+    }
+
+    // 2. Validate status
+    const validStatuses = ['pending', 'accepted', 'rejected', 'waitlist']
+    if (!validStatuses.includes(newStatus)) {
+        return { success: false, error: 'Statut invalide' }
+    }
+
+    // 3. Update candidates
+    const { error } = await supabase
+        .from('candidates')
+        .update({ status: newStatus as 'pending' | 'accepted' | 'rejected' | 'waitlist' })
+        .in('id', candidateIds)
+
+    if (error) {
+        console.error('Update status error:', error)
+        return { success: false, error: 'Erreur lors de la mise à jour des statuts' }
+    }
+
+    revalidatePath('/dashboard/candidates')
+    return { success: true }
+}
