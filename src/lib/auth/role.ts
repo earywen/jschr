@@ -31,7 +31,7 @@ export async function getUserRole(): Promise<UserWithRole | null> {
         .from('members')
         .select('id, email, role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (error || !member) {
         console.error('Error fetching member role:', error)

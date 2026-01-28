@@ -35,6 +35,10 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
                 throw new Error('L\'image est trop lourde (max 5Mo).')
             }
 
+            // Verify session is valid before uploading
+            const { error: sessionError } = await supabase.auth.getSession()
+            if (sessionError) throw new Error("Session expirée, veuillez rafraichir la page.")
+
             const fileExt = file.name.split('.').pop()
             const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`
             const filePath = `screenshots/${fileName}`

@@ -55,9 +55,15 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    let user = null
+    try {
+        const { data } = await supabase.auth.getUser()
+        user = data.user
+    } catch (error) {
+        // Ignore errors here (like rate limits) to prevent infinite loops
+        // The page will handle the missing user state naturally
+        console.error('Middleware auth check failed:', error)
+    }
 
     // Protected routes logic
     if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
