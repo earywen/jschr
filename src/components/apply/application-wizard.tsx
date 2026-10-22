@@ -58,6 +58,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [formData, setFormData] = useState<Partial<ApplicationFormData>>({})
     const [fetchedCharacters, setFetchedCharacters] = useState<BattleNetCharacter[]>([])
+    const [selectedBnetCharacter, setSelectedBnetCharacter] = useState<BattleNetCharacter | null>(null)
     const [showCharacterPicker, setShowCharacterPicker] = useState(false)
     const [characterSearch, setCharacterSearch] = useState('')
 
@@ -174,6 +175,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
     const progress = (currentStep / STEPS.length) * 100
 
     const handleSelectCharacter = (char: BattleNetCharacter) => {
+        setSelectedBnetCharacter(char)
         step1Form.setValue('characterName', char.name)
         // Use centralized class mapping from wow-classes.ts
         const classSlug = getClassIdFromName(char.className)
@@ -541,40 +543,64 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
 
                             <div className="grid gap-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Classe *</Label>
-                                        <Select
-                                            value={step2Form.watch('classId') || undefined}
-                                            onValueChange={(value) => {
-                                                step2Form.setValue('classId', value, { shouldValidate: true })
-                                                step2Form.setValue('specId', '', { shouldValidate: true })
-                                            }}
-                                        >
-                                            <SelectTrigger className="h-12 w-full bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50">
-                                                <SelectValue placeholder="Sélectionnez une classe" />
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl overflow-hidden max-h-72">
-                                                {WOW_CLASSES.map((wowClass) => (
-                                                    <SelectItem
-                                                        key={wowClass.id}
-                                                        value={wowClass.id}
-                                                        className="font-medium cursor-pointer transition-colors py-2"
-                                                    >
-                                                        <div className="flex items-center gap-2.5">
-                                                            <img
-                                                                src={`https://render.worldofwarcraft.com/eu/icons/56/${wowClass.icon}.jpg`}
-                                                                alt={wowClass.nameFr}
-                                                                className="w-5 h-5 rounded border border-white/10 object-cover shrink-0"
-                                                            />
-                                                            <span style={{ color: wowClass.color }} className="font-semibold">
-                                                                {wowClass.nameFr}
-                                                            </span>
-                                                        </div>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                    {selectedBnetCharacter && selectedClass ? (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Classe</Label>
+                                                <span className="text-[11px] font-semibold text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                                                    Liée à {selectedBnetCharacter.name}
+                                                </span>
+                                            </div>
+                                            <div className="h-12 w-full flex items-center justify-between px-4 rounded-xl border border-white/10 bg-white/[0.03]">
+                                                <div className="flex items-center gap-2.5">
+                                                    <img
+                                                        src={`https://render.worldofwarcraft.com/eu/icons/56/${selectedClass.icon}.jpg`}
+                                                        alt={selectedClass.nameFr}
+                                                        className="w-5 h-5 rounded border border-white/10 object-cover shrink-0"
+                                                    />
+                                                    <span style={{ color: selectedClass.color }} className="font-bold text-sm tracking-wide">
+                                                        {selectedClass.nameFr}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[11px] text-zinc-500 font-medium">Auto Battle.net</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Classe *</Label>
+                                            <Select
+                                                value={step2Form.watch('classId') || undefined}
+                                                onValueChange={(value) => {
+                                                    step2Form.setValue('classId', value, { shouldValidate: true })
+                                                    step2Form.setValue('specId', '', { shouldValidate: true })
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 w-full bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50">
+                                                    <SelectValue placeholder="Sélectionnez une classe" />
+                                                </SelectTrigger>
+                                                <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl overflow-hidden max-h-72">
+                                                    {WOW_CLASSES.map((wowClass) => (
+                                                        <SelectItem
+                                                            key={wowClass.id}
+                                                            value={wowClass.id}
+                                                            className="font-medium cursor-pointer py-2"
+                                                        >
+                                                            <div className="flex items-center gap-2.5">
+                                                                <img
+                                                                    src={`https://render.worldofwarcraft.com/eu/icons/56/${wowClass.icon}.jpg`}
+                                                                    alt={wowClass.nameFr}
+                                                                    className="w-5 h-5 rounded border border-white/10 object-cover shrink-0"
+                                                                />
+                                                                <span style={{ color: wowClass.color }} className="font-semibold">
+                                                                    {wowClass.nameFr}
+                                                                </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
 
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Spécialisation *</Label>
@@ -590,10 +616,10 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                                 {availableSpecs.map((spec) => {
                                                     const roleBadge =
                                                         spec.role === 'tank'
-                                                            ? { label: 'Tank', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' }
+                                                            ? { label: 'Tank', color: 'text-blue-300 bg-blue-500/15 border-blue-500/30' }
                                                             : spec.role === 'healer'
-                                                            ? { label: 'Soigneur', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' }
-                                                            : { label: 'DPS', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' }
+                                                            ? { label: 'Soigneur', color: 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30' }
+                                                            : { label: 'DPS', color: 'text-rose-300 bg-rose-500/15 border-rose-500/30' }
 
                                                     return (
                                                         <SelectItem
