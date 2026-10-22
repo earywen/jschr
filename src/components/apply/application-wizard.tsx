@@ -545,9 +545,9 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {selectedBnetCharacter && selectedClass ? (
                                         <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex items-center justify-between h-6">
                                                 <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Classe</Label>
-                                                <span className="text-[11px] font-semibold text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                                                <span className="text-[11px] font-semibold text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md leading-none flex items-center">
                                                     Liée à {selectedBnetCharacter.name}
                                                 </span>
                                             </div>
@@ -567,7 +567,9 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Classe *</Label>
+                                            <div className="flex items-center justify-between h-6">
+                                                <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Classe *</Label>
+                                            </div>
                                             <Select
                                                 value={step2Form.watch('classId') || undefined}
                                                 onValueChange={(value) => {
@@ -575,7 +577,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                                     step2Form.setValue('specId', '', { shouldValidate: true })
                                                 }}
                                             >
-                                                <SelectTrigger className="h-12 w-full bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50">
+                                                <SelectTrigger className="h-12 px-4 w-full bg-black/40 border-white/10 text-white rounded-xl focus:border-primary/50">
                                                     <SelectValue placeholder="Sélectionnez une classe" />
                                                 </SelectTrigger>
                                                 <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl overflow-hidden max-h-72">
@@ -603,13 +605,15 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                     )}
 
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Spécialisation *</Label>
+                                        <div className="flex items-center justify-between h-6">
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Spécialisation *</Label>
+                                        </div>
                                         <Select
                                             value={step2Form.watch('specId') || undefined}
                                             onValueChange={(value) => step2Form.setValue('specId', value, { shouldValidate: true })}
                                             disabled={!selectedClassId}
                                         >
-                                            <SelectTrigger className="h-12 w-full bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed">
+                                            <SelectTrigger className="h-12 px-4 w-full bg-black/40 border-white/10 text-white rounded-xl focus:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed">
                                                 <SelectValue placeholder={selectedClassId ? "Sélectionnez une spécialisation" : "Choisissez d'abord une classe"} />
                                             </SelectTrigger>
                                             <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl max-h-72">
