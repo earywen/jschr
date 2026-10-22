@@ -63,7 +63,7 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-4xl mx-auto px-4">
-                    <TooltipProvider delayDuration={0}>
+                    <TooltipProvider delayDuration={50} skipDelayDuration={300}>
                         {WOW_CLASSES.map((wowClass) => {
                             const classNeeds = needsByClass[wowClass.name] || []
                             const isActive = classNeeds.length > 0
@@ -72,21 +72,29 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                             return (
                                 <Tooltip
                                     key={wowClass.id}
-                                    open={isTooltipOpen}
+                                    open={isActive ? isTooltipOpen : false}
                                     onOpenChange={(open) => {
-                                        if (!open) setActiveTooltip(null)
+                                        if (!isActive) return
+                                        if (open) {
+                                            setActiveTooltip(wowClass.id)
+                                        } else if (activeTooltip === wowClass.id) {
+                                            setActiveTooltip(null)
+                                        }
                                     }}
                                 >
                                     <TooltipTrigger asChild>
-                                        <div
-                                            onClick={() => setActiveTooltip(isTooltipOpen ? null : wowClass.id)}
-                                            onMouseEnter={() => setActiveTooltip(wowClass.id)}
-                                            onMouseLeave={() => setActiveTooltip(null)}
+                                        <button
+                                            type="button"
+                                            disabled={!isActive}
+                                            onClick={() => {
+                                                if (!isActive) return
+                                                setActiveTooltip(prev => prev === wowClass.id ? null : wowClass.id)
+                                            }}
                                             className={`
-                                                relative cursor-pointer transition-all duration-300 rounded-xl p-1
+                                                group relative rounded-xl p-1 outline-none transition-all duration-300
                                                 ${isActive
-                                                    ? 'opacity-100 hover:scale-110 hover:z-10'
-                                                    : 'opacity-20 grayscale hover:opacity-40'
+                                                    ? 'cursor-pointer opacity-100 hover:z-10 focus-visible:ring-2 focus-visible:ring-primary'
+                                                    : 'cursor-default opacity-20 grayscale'
                                                 }
                                             `}
                                         >
@@ -94,8 +102,8 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                                                 src={getIconUrl(wowClass.icon)}
                                                 alt={wowClass.name}
                                                 className={`
-                                                    w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover shadow-lg
-                                                    ${isActive ? 'border-2' : 'border border-white/10'}
+                                                    w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover shadow-lg transition-transform duration-200
+                                                    ${isActive ? 'border-2 group-hover:scale-110' : 'border border-white/10'}
                                                 `}
                                                 style={isActive ? { borderColor: wowClass.color, boxShadow: `0 0 15px -5px ${wowClass.color}` } : undefined}
                                                 onError={(e) => {
@@ -105,16 +113,16 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                                             />
                                             {/* Small indicator dot for active classes */}
                                             {isActive && (
-                                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                                <span className="pointer-events-none absolute -top-1 -right-1 flex h-3 w-3">
                                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: wowClass.color }}></span>
                                                     <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: wowClass.color }}></span>
                                                 </span>
                                             )}
-                                        </div>
+                                        </button>
                                     </TooltipTrigger>
 
                                     {isActive && (
-                                        <TooltipContent side="bottom" className="border-zinc-800 bg-zinc-950/95 text-zinc-100 backdrop-blur-xl p-3 shadow-2xl z-50">
+                                        <TooltipContent side="bottom" sideOffset={8} className="border-zinc-800 bg-zinc-950/95 text-zinc-100 backdrop-blur-xl p-3 shadow-2xl z-50">
                                             <div className="space-y-3 min-w-[200px]">
                                                 {/* Tooltip Header */}
                                                 <div className="flex items-center gap-2 border-b border-white/5 pb-2">
