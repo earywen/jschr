@@ -62,8 +62,11 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                     </p>
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-4xl mx-auto px-4">
-                    <TooltipProvider delayDuration={50} skipDelayDuration={300}>
+                <div
+                    className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-4xl mx-auto px-4"
+                    onMouseLeave={() => setActiveTooltip(null)}
+                >
+                    <TooltipProvider delayDuration={50} skipDelayDuration={300} disableHoverableContent={true}>
                         {WOW_CLASSES.map((wowClass) => {
                             const classNeeds = needsByClass[wowClass.name] || []
                             const isActive = classNeeds.length > 0
@@ -86,6 +89,9 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                                         <button
                                             type="button"
                                             disabled={!isActive}
+                                            onMouseEnter={() => {
+                                                if (isActive) setActiveTooltip(wowClass.id)
+                                            }}
                                             onClick={() => {
                                                 if (!isActive) return
                                                 setActiveTooltip(prev => prev === wowClass.id ? null : wowClass.id)
