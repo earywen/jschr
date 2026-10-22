@@ -10,7 +10,8 @@ export const identitySchema = z.object({
 // Step 2: Character
 export const characterSchema = z.object({
     classId: z.string().min(1, 'Veuillez sélectionner une classe'),
-    specId: z.string().min(1, 'Veuillez sélectionner une spécialisation'),
+    specId: z.string().min(1, 'Veuillez sélectionner votre spécialisation principale'),
+    secondarySpecs: z.array(z.string()).optional(),
     warcraftlogsLink: z.string().url('URL invalide').optional().or(z.literal('')),
     screenshotUrl: z.string().optional(),
     avatarUrl: z.string().optional(),

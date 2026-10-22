@@ -177,12 +177,28 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                                     {status.label}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 text-base font-bold">
+                            <div className="flex flex-wrap items-center gap-2 text-base font-bold">
                                 <span style={{ color: candidate.wow_class?.color }}>
                                     {candidate.wow_class?.name}
                                 </span>
                                 <span className="text-white/20">•</span>
                                 <span className="text-[#94A3B8]">{candidate.wow_spec?.name}</span>
+                                <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/25 px-2 py-0.5 rounded-md leading-none">
+                                    Principale
+                                </span>
+                                {(candidate as any).secondary_specs && (candidate as any).secondary_specs.length > 0 && (
+                                    <>
+                                        <span className="text-white/20">•</span>
+                                        <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400">
+                                            <span className="text-zinc-500">Off-spec :</span>
+                                            {((candidate as any).secondary_specs as string[]).map((specName, idx) => (
+                                                <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-zinc-300">
+                                                    {specName}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

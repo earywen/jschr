@@ -27,7 +27,7 @@ import {
     type MotivationFormData,
     type ApplicationFormData,
 } from '@/lib/validations/application'
-import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User, Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User, Search, X, Check, Plus, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { GlassCard } from '@/components/ui/glass-card'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -101,6 +101,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
         defaultValues: {
             classId: '',
             specId: '',
+            secondarySpecs: [],
             warcraftlogsLink: '',
             screenshotUrl: '',
             avatarUrl: '',
@@ -121,8 +122,20 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
     })
 
     const selectedClassId = step2Form.watch('classId')
+    const selectedMainSpecId = step2Form.watch('specId')
+    const selectedSecondarySpecs = step2Form.watch('secondarySpecs') || []
     const availableSpecs = selectedClassId ? getSpecsByClass(selectedClassId) : []
+    const secondaryOptions = availableSpecs.filter(spec => spec.id !== selectedMainSpecId)
     const selectedClass = selectedClassId ? getClassById(selectedClassId) : null
+
+    const toggleSecondarySpec = (specId: string) => {
+        const current = step2Form.getValues('secondarySpecs') || []
+        if (current.includes(specId)) {
+            step2Form.setValue('secondarySpecs', current.filter(id => id !== specId), { shouldValidate: true })
+        } else {
+            step2Form.setValue('secondarySpecs', [...current, specId], { shouldValidate: true })
+        }
+    }
 
     const handleNext = async () => {
         if (currentStep === 1) {
@@ -181,6 +194,8 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
         const classSlug = getClassIdFromName(char.className)
         if (classSlug) {
             step2Form.setValue('classId', classSlug)
+            step2Form.setValue('specId', '')
+            step2Form.setValue('secondarySpecs', [])
         }
         setShowCharacterPicker(false)
         // Auto-generate WarcraftLogs link based on character using realmSlug
@@ -575,6 +590,7 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                                 onValueChange={(value) => {
                                                     step2Form.setValue('classId', value, { shouldValidate: true })
                                                     step2Form.setValue('specId', '', { shouldValidate: true })
+                                                    step2Form.setValue('secondarySpecs', [], { shouldValidate: true })
                                                 }}
                                             >
                                                 <SelectTrigger className="h-12 px-4 w-full bg-black/40 border-white/10 text-white rounded-xl focus:border-primary/50">
@@ -606,15 +622,21 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
 
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between h-6">
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Spécialisation *</Label>
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Spécialisation principale *</Label>
                                         </div>
                                         <Select
                                             value={step2Form.watch('specId') || undefined}
-                                            onValueChange={(value) => step2Form.setValue('specId', value, { shouldValidate: true })}
+                                            onValueChange={(value) => {
+                                                step2Form.setValue('specId', value, { shouldValidate: true })
+                                                const currentSecondary = step2Form.getValues('secondarySpecs') || []
+                                                if (currentSecondary.includes(value)) {
+                                                    step2Form.setValue('secondarySpecs', currentSecondary.filter(id => id !== value), { shouldValidate: true })
+                                                }
+                                            }}
                                             disabled={!selectedClassId}
                                         >
                                             <SelectTrigger className="h-12 px-4 w-full bg-black/40 border-white/10 text-white rounded-xl focus:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed">
-                                                <SelectValue placeholder={selectedClassId ? "Sélectionnez une spécialisation" : "Choisissez d'abord une classe"} />
+                                                <SelectValue placeholder={selectedClassId ? "Sélectionnez votre spé principale" : "Choisissez d'abord une classe"} />
                                             </SelectTrigger>
                                             <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl max-h-72">
                                                 {availableSpecs.map((spec) => {
@@ -654,6 +676,83 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                         )}
                                     </div>
                                 </div>
+
+                                {selectedClassId && selectedMainSpecId && secondaryOptions.length > 0 && (
+                                    <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                                                    Spécialisations secondaires
+                                                </Label>
+                                                <span className="text-[10px] font-semibold text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                                                    Optionnel
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-zinc-400 font-medium">
+                                                Indiquez les spécialisations que vous pouvez jouer en raid si besoin
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                                            {secondaryOptions.map((spec) => {
+                                                const isSelected = selectedSecondarySpecs.includes(spec.id)
+                                                const roleBadge =
+                                                    spec.role === 'tank'
+                                                        ? { label: 'Tank', color: 'text-blue-300 bg-blue-500/15 border-blue-500/30' }
+                                                        : spec.role === 'healer'
+                                                        ? { label: 'Soigneur', color: 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30' }
+                                                        : { label: 'DPS', color: 'text-rose-300 bg-rose-500/15 border-rose-500/30' }
+
+                                                return (
+                                                    <button
+                                                        key={spec.id}
+                                                        type="button"
+                                                        onClick={() => toggleSecondarySpec(spec.id)}
+                                                        className={cn(
+                                                            "group flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer",
+                                                            isSelected
+                                                                ? "bg-primary/10 border-primary/40 shadow-[0_0_15px_rgba(var(--primary-rgb),0.12)] text-white"
+                                                                : "bg-black/30 border-white/5 text-zinc-400 hover:border-white/15 hover:text-white hover:bg-white/[0.04]"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <img
+                                                                src={`https://render.worldofwarcraft.com/eu/icons/56/${spec.icon}.jpg`}
+                                                                alt={spec.nameFr}
+                                                                className={cn(
+                                                                    "w-6 h-6 rounded border object-cover shrink-0 transition-opacity",
+                                                                    isSelected ? "border-primary/50 opacity-100" : "border-white/10 opacity-70 group-hover:opacity-100"
+                                                                )}
+                                                            />
+                                                            <div className="min-w-0">
+                                                                <div className="text-xs font-bold truncate">
+                                                                    {spec.nameFr}
+                                                                </div>
+                                                                <div className="text-[10px] text-zinc-400 truncate">
+                                                                    {roleBadge.label}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="shrink-0 ml-2">
+                                                            {isSelected ? (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/20 border border-primary/30 px-2 py-0.5 rounded-md">
+                                                                    <Check className="w-3 h-3" />
+                                                                    Off-spec
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400 group-hover:text-zinc-300">
+                                                                    <Plus className="w-3 h-3" />
+                                                                    Ajouter
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">

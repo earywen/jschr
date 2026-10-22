@@ -90,6 +90,14 @@ FROM information_schema.triggers
 WHERE event_object_table = 'votes' AND trigger_schema = 'public';
 
 -- ================================================
+-- Migration: Add secondary_specs column
+-- ================================================
+ALTER TABLE public.candidates
+ADD COLUMN IF NOT EXISTS secondary_specs text[] DEFAULT '{}';
+
+COMMENT ON COLUMN public.candidates.secondary_specs IS 'Array of secondary/off-specializations played by the candidate';
+
+-- ================================================
 -- SUCCESS MESSAGE
 -- ================================================
 DO $$

@@ -56,6 +56,7 @@ export type Database = {
           raid_experience: string | null
           realm: string | null
           screenshot_url: string | null
+          secondary_specs: string[] | null
           spec_id: string
           status: Database["public"]["Enums"]["candidate_status"]
           updated_at: string
@@ -81,6 +82,7 @@ export type Database = {
           raid_experience?: string | null
           realm?: string | null
           screenshot_url?: string | null
+          secondary_specs?: string[] | null
           spec_id: string
           status?: Database["public"]["Enums"]["candidate_status"]
           updated_at?: string
@@ -106,6 +108,7 @@ export type Database = {
           raid_experience?: string | null
           realm?: string | null
           screenshot_url?: string | null
+          secondary_specs?: string[] | null
           spec_id?: string
           status?: Database["public"]["Enums"]["candidate_status"]
           updated_at?: string

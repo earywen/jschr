@@ -422,14 +422,23 @@ export function createColumns(
         cell: ({ row }) => {
             const wowSpec = row.original.wow_spec
             const wowClass = row.original.wow_class
+            const secondarySpecs = (row.original as any).secondary_specs as string[] | undefined
             return (
-                <div className="text-center">
+                <div className="text-center flex items-center justify-center gap-1.5">
                     <span
                         className="text-sm"
                         style={{ color: wowClass?.color || '#94A3B8' }}
                     >
                         {wowSpec?.name || '—'}
                     </span>
+                    {secondarySpecs && secondarySpecs.length > 0 && (
+                        <span
+                            className="text-[10px] font-bold text-zinc-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded cursor-help"
+                            title={`Spé(s) secondaire(s) : ${secondarySpecs.join(', ')}`}
+                        >
+                            +{secondarySpecs.length}
+                        </span>
+                    )}
                 </div>
             )
         },

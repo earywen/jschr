@@ -170,3 +170,11 @@ export function getSpecNameFromId(specId: string): string {
     const spec = WOW_SPECS.find(s => s.id === specId)
     return spec?.name || specId
 }
+
+/**
+ * Get spec French name from our internal ID (format: "classId-specName")
+ */
+export function getSpecFrNameFromId(specId: string): string {
+    const spec = WOW_SPECS.find(s => s.id === specId)
+    return spec?.nameFr || spec?.name || specId
+}

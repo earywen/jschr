@@ -162,6 +162,7 @@ export async function notifyNewCandidate(
         wlogsLink?: string | null
         screenshotUrl?: string | null
         avatarUrl?: string | null
+        secondarySpecs?: string[] | null
     }
 ): Promise<string | null> {
     const classColor = CLASS_COLORS[className.toLowerCase().replace(/\s/g, '')] || 0x5865F2
@@ -203,11 +204,19 @@ export async function notifyNewCandidate(
             inline: true,
         },
         {
-            name: 'Spécialisation',
-            value: specName,
+            name: 'Spé Principale',
+            value: `⭐ **${specName}**`,
             inline: true,
         }
     )
+
+    if (data?.secondarySpecs && data.secondarySpecs.length > 0) {
+        fields.push({
+            name: 'Spé(s) Secondaire(s)',
+            value: data.secondarySpecs.join(', '),
+            inline: true,
+        })
+    }
 
     if (data?.ilvl) {
         fields.push({

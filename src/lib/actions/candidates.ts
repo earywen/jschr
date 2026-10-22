@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { applicationSchema, type ApplicationFormData } from '@/lib/validations/application'
 import { notifyNewCandidate } from '@/lib/discord/notifications'
 import { fetchWarcraftLogsData, updateCandidateWlogsData } from '@/lib/api/warcraftlogs'
-import { getClassNameFromId, getSpecNameFromId } from '@/lib/data/wow-classes'
+import { getClassNameFromId, getSpecNameFromId, WOW_SPECS } from '@/lib/data/wow-classes'
 import { revalidatePath } from 'next/cache'
 
 export interface SubmitApplicationResult {
@@ -62,35 +62,62 @@ export async function submitApplication(
         }
     }
 
+    // Format main spec and secondary specs for human display and database
+    const mainSpecObj = WOW_SPECS.find(s => s.id === parsed.data.specId)
+    const mainSpecDisplayName = mainSpecObj ? mainSpecObj.nameFr : specName
+    const secondarySpecsNames = (parsed.data.secondarySpecs || []).map(id => {
+        const s = WOW_SPECS.find(spec => spec.id === id)
+        return s?.nameFr || getSpecNameFromId(id)
+    })
+
     // Insert candidate
     // Use admin client to bypass RLS strictness during submission
     const adminSupabase = createAdminClient()
-    const { data: candidate, error: insertError } = await adminSupabase
+    const insertPayload: any = {
+        name: parsed.data.characterName,
+        battle_tag: parsed.data.battleTag || null,
+        discord_id: parsed.data.discordId || null,
+        class_id: wowClass.id,
+        spec_id: wowSpec.id,
+        secondary_specs: secondarySpecsNames,
+        warcraftlogs_link: parsed.data.warcraftlogsLink || null,
+        screenshot_url: parsed.data.screenshotUrl || null,
+        avatar_url: parsed.data.avatarUrl || null,
+        raid_experience: parsed.data.raidExperience || null,
+        about_me: parsed.data.aboutMe || null,
+        why_jsc: parsed.data.whyJSC || null,
+        motivation: parsed.data.motivation,
+        user_id: user?.id || null,
+        status: 'pending',
+    }
+
+    let { data: candidate, error: insertError } = await adminSupabase
         .from('candidates')
-        .insert({
-            name: parsed.data.characterName,
-            battle_tag: parsed.data.battleTag || null,
-            discord_id: parsed.data.discordId || null,
-            class_id: wowClass.id,
-            spec_id: wowSpec.id,
-            warcraftlogs_link: parsed.data.warcraftlogsLink || null,
-            screenshot_url: parsed.data.screenshotUrl || null,
-            avatar_url: parsed.data.avatarUrl || null,
-            raid_experience: parsed.data.raidExperience || null,
-            about_me: parsed.data.aboutMe || null,
-            why_jsc: parsed.data.whyJSC || null,
-            motivation: parsed.data.motivation,
-            user_id: user?.id || null,
-            status: 'pending',
-        })
+        .insert(insertPayload)
         .select('id')
         .single()
 
-    if (insertError) {
+    // Graceful fallback if secondary_specs column hasn't been added to Supabase yet
+    if (insertError && (insertError.message?.includes('secondary_specs') || (insertError as any).code === '42703')) {
+        console.warn('secondary_specs column missing in database, falling back gracefully without it')
+        delete insertPayload.secondary_specs
+        if (secondarySpecsNames.length > 0) {
+            insertPayload.raid_experience = `${insertPayload.raid_experience || ''}\n\n[Spécialisation(s) secondaire(s) : ${secondarySpecsNames.join(', ')}]`.trim()
+        }
+        const retry = await adminSupabase
+            .from('candidates')
+            .insert(insertPayload)
+            .select('id')
+            .single()
+        candidate = retry.data
+        insertError = retry.error
+    }
+
+    if (insertError || !candidate) {
         console.error('Insert error:', insertError)
         return {
             success: false,
-            error: `Erreur lors de la soumission: ${insertError.message || JSON.stringify(insertError)}`,
+            error: `Erreur lors de la soumission: ${insertError?.message || JSON.stringify(insertError)}`,
         }
     }
 
@@ -128,7 +155,7 @@ export async function submitApplication(
         candidate.id,
         parsed.data.characterName,
         getClassNameFromId(parsed.data.classId),
-        getSpecNameFromId(parsed.data.specId),
+        mainSpecDisplayName,
         parsed.data.raidExperience,
         parsed.data.aboutMe,
         parsed.data.whyJSC,
@@ -140,7 +167,8 @@ export async function submitApplication(
             bestPerfAvg: wlogsStats.bestPerfAvg,
             wlogsLink: parsed.data.warcraftlogsLink,
             screenshotUrl: parsed.data.screenshotUrl,
-            avatarUrl: parsed.data.avatarUrl
+            avatarUrl: parsed.data.avatarUrl,
+            secondarySpecs: secondarySpecsNames
         }
     )
 
@@ -437,6 +465,7 @@ export async function resendCandidateNotification(
             wlogsLink: candidate.warcraftlogs_link,
             screenshotUrl: candidate.screenshot_url,
             avatarUrl: candidate.avatar_url,
+            secondarySpecs: (candidate as any).secondary_specs || null,
         }
     )
 
