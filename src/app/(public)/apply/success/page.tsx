@@ -20,7 +20,7 @@ export default function ApplySuccessPage() {
                                 alt="Jet Set Club Logo"
                                 className="h-32 w-auto object-contain drop-shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-transform duration-700 group-hover:scale-105"
                             />
-                            <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black p-2 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] border-4 border-black group-hover:scale-110 transition-transform duration-500">
+                            <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black p-2 rounded-xl shadow-lg border-4 border-black group-hover:scale-110 transition-transform duration-500">
                                 <CheckCircle2 className="h-6 w-6" />
                             </div>
                         </div>
@@ -28,12 +28,11 @@ export default function ApplySuccessPage() {
 
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Candidature transmise</p>
-                            <h1 className="text-4xl font-black text-white tracking-tighter sm:text-5xl">
-                                Félicitations!
+                            <h1 className="text-4xl font-black text-white tracking-tighter sm:text-5xl text-balance">
+                                Félicitations !
                             </h1>
                         </div>
-                        <p className="text-zinc-500 leading-relaxed text-sm max-w-sm mx-auto">
+                        <p className="text-zinc-400 leading-relaxed text-sm max-w-sm mx-auto">
                             Votre profil a été envoyé au Jet Set Club. Nos officiers examineront votre demande prochainement. Surveillez vos messages sur <span className="text-white font-bold">Discord</span>.
                         </p>
                     </div>
@@ -41,7 +40,7 @@ export default function ApplySuccessPage() {
                     <div className="flex flex-col items-center gap-4 pt-4">
                         <Button
                             asChild
-                            className="h-14 w-72 bg-[#5865F2] text-white hover:bg-[#5865F2]/90 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(88,101,242,0.4)] transition-all hover:scale-105"
+                            className="h-14 w-72 bg-[#5865F2] text-white hover:bg-[#5865F2]/90 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-lg transition-all hover:scale-105"
                         >
                             <Link href="https://discord.com/users/155437093659607040" target="_blank" rel="noopener noreferrer" className="gap-2">
                                 <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -54,7 +53,7 @@ export default function ApplySuccessPage() {
                         <Button
                             asChild
                             variant="ghost"
-                            className="h-14 w-72 text-zinc-500 hover:text-white hover:bg-white/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+                            className="h-14 w-72 text-zinc-400 hover:text-white hover:bg-white/5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all"
                         >
                             <Link href="/" className="gap-2">
                                 <Home className="h-4 w-4" />

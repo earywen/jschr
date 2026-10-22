@@ -55,11 +55,9 @@ export function ApplyContent({ needs }: ApplyContentProps) {
                             />
                         </div>
                         <div className="space-y-3">
-                            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Formulaire d'apply</p>
-                            <h1 className="text-4xl font-black text-white tracking-tighter sm:text-5xl leading-[0.9]">
+                            <h1 className="text-4xl font-black text-white tracking-tighter sm:text-5xl leading-[0.9] text-balance">
                                 Rejoignez le <span className="text-primary italic">Jet Set Club</span>.
                             </h1>
-
                         </div>
                     </div>
                 </BlurFade>
@@ -78,7 +76,7 @@ export function ApplyContent({ needs }: ApplyContentProps) {
                 {/* Wizard */}
                 <ApplicationWizard onSubmit={handleSubmit} />
 
-                <p className="mt-12 text-center text-[10px] font-bold text-zinc-700 uppercase tracking-[0.4em]">
+                <p className="mt-12 text-center text-xs font-medium text-zinc-400 uppercase tracking-widest">
                     &copy; 2026 JET SET CLUB
                 </p>
             </div>

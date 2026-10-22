@@ -57,7 +57,7 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                     <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-2">
                         Classes Recherchées
                     </h2>
-                    <p className="text-zinc-500 text-xs">
+                    <p className="text-zinc-400 text-xs">
                         {needs.length > 0
                             ? "Survolez les classes pour voir les spécialisations"
                             : "Le recrutement est actuellement fermé — candidatures spontanées bienvenues"}
@@ -159,7 +159,7 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                                                                         {need.spec.name}
                                                                     </span>
                                                                 </div>
-                                                                <Badge className={`${PRIORITY_STYLES[need.priority]} uppercase text-[10px] h-5`}>
+                                                                <Badge className={`${PRIORITY_STYLES[need.priority]} uppercase text-xs font-semibold h-5`}>
                                                                     {PRIORITY_LABELS[need.priority]}
                                                                 </Badge>
                                                             </div>
