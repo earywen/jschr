@@ -58,7 +58,9 @@ export function RecruitmentBoard({ initialNeeds }: RecruitmentBoardProps) {
                         Classes Recherchées
                     </h2>
                     <p className="text-zinc-500 text-xs">
-                        Survolez les classes pour voir les spécialisations
+                        {needs.length > 0
+                            ? "Survolez les classes pour voir les spécialisations"
+                            : "Le recrutement est actuellement fermé — candidatures spontanées bienvenues"}
                     </p>
                 </div>
 
