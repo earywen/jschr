@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ import {
     type MotivationFormData,
     type ApplicationFormData,
 } from '@/lib/validations/application'
-import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { GlassCard } from '@/components/ui/glass-card'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -59,6 +59,29 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
     const [formData, setFormData] = useState<Partial<ApplicationFormData>>({})
     const [fetchedCharacters, setFetchedCharacters] = useState<BattleNetCharacter[]>([])
     const [showCharacterPicker, setShowCharacterPicker] = useState(false)
+    const [characterSearch, setCharacterSearch] = useState('')
+
+    const sortedAndFilteredCharacters = useMemo(() => {
+        return [...fetchedCharacters]
+            .filter((char) => {
+                if (!characterSearch.trim()) return true
+                const q = characterSearch.toLowerCase().trim()
+                const classId = getClassIdFromName(char.className)
+                const wowClass = classId ? getClassById(classId) : null
+                return (
+                    char.name.toLowerCase().includes(q) ||
+                    char.realm.toLowerCase().includes(q) ||
+                    char.className.toLowerCase().includes(q) ||
+                    (wowClass?.nameFr.toLowerCase().includes(q) ?? false)
+                )
+            })
+            .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name))
+    }, [fetchedCharacters, characterSearch])
+
+    const handleCloseCharacterPicker = () => {
+        setShowCharacterPicker(false)
+        setCharacterSearch('')
+    }
 
     // Step 1 Form
     const step1Form = useForm<IdentityFormData>({
@@ -167,101 +190,191 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
         if (char.avatarUrl) {
             step2Form.setValue('avatarUrl', char.avatarUrl)
         }
+        setCharacterSearch('')
     }
 
     return (
         <div className="mx-auto max-w-2xl space-y-10 py-4">
             {/* Character Picker Modal */}
             {showCharacterPicker && fetchedCharacters.length > 0 && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/90 backdrop-blur-md px-4">
-                    <BlurFade>
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/85 backdrop-blur-md p-4 sm:p-6"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) handleCloseCharacterPicker()
+                    }}
+                >
+                    <BlurFade className="w-full max-w-lg">
                         <GlassCard
-                            className="w-full max-w-lg max-h-[85vh] flex flex-col border-white/10 bg-black/60 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
+                            className="w-full max-h-[85vh] flex flex-col border-white/10 bg-zinc-950/90 shadow-2xl overflow-hidden rounded-3xl"
                             innerClassName="p-0 flex flex-col h-full min-h-0"
                             showBorderBeam
                         >
-                            {/* Background Glow */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-primary/5 blur-[80px] rounded-full pointer-events-none" />
+                            {/* Header */}
+                            <div className="relative p-6 pb-4 border-b border-white/5">
+                                <button
+                                    type="button"
+                                    onClick={handleCloseCharacterPicker}
+                                    className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                                    aria-label="Fermer"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
 
-                            <div className="relative p-8 pb-6 text-center border-b border-white/[0.03]">
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold uppercase tracking-wider text-primary mb-3">Battle.net</div>
-                                <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Choisissez votre Champion</h1>
-                                <p className="mt-4 text-zinc-400 font-medium text-xs max-w-[280px] mx-auto leading-relaxed">
-                                    Sélectionnez le personnage que vous souhaitez enrôler pour cette candidature.
-                                </p>
+                                <div className="text-center max-w-xs mx-auto">
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0074e0]/10 border border-[#0074e0]/25 text-xs font-bold uppercase tracking-wider text-[#00AEFF] mb-2">
+                                        Battle.net
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-white tracking-tight">
+                                        Choisissez votre personnage
+                                    </h2>
+                                    <p className="mt-1 text-xs text-zinc-400 font-medium leading-relaxed">
+                                        Sélectionnez le champion avec lequel vous candidatez.
+                                    </p>
+                                </div>
+
+                                {/* Search Bar */}
+                                {fetchedCharacters.length > 3 && (
+                                    <div className="relative mt-4">
+                                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                                        <Input
+                                            type="text"
+                                            value={characterSearch}
+                                            onChange={(e) => setCharacterSearch(e.target.value)}
+                                            placeholder="Filtrer par nom, classe, serveur..."
+                                            className="h-10 pl-10 pr-9 bg-white/[0.04] border-white/10 text-xs text-white placeholder:text-zinc-500 rounded-xl focus:border-primary/50"
+                                        />
+                                        {characterSearch && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setCharacterSearch('')}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-white rounded-md"
+                                                aria-label="Effacer la recherche"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="relative flex-1 overflow-y-auto px-6 py-6 space-y-3 custom-scrollbar">
-                                {fetchedCharacters.map((char, idx) => {
+                            {/* Character List */}
+                            <div className="relative flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5 custom-scrollbar">
+                                {sortedAndFilteredCharacters.map((char, idx) => {
                                     const classId = getClassIdFromName(char.className)
                                     const wowClass = classId ? getClassById(classId) : null
                                     const classColor = wowClass?.color || (char.faction === 'HORDE' ? '#ef4444' : '#3b82f6')
+                                    const classIconUrl = wowClass ? `https://render.worldofwarcraft.com/eu/icons/56/${wowClass.icon}.jpg` : null
+                                    const isMaxLevel = char.level >= 80
 
                                     return (
                                         <button
                                             key={`${char.name}-${char.realm}-${idx}`}
+                                            type="button"
                                             onClick={() => handleSelectCharacter(char)}
-                                            className="group relative flex w-full items-center gap-5 rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-4 text-left transition-all hover:bg-white/[0.05] hover:border-primary/30"
+                                            className="group relative flex w-full items-center gap-3.5 rounded-2xl border border-white/5 bg-white/[0.02] p-3 text-left transition-all hover:bg-white/[0.06] hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/40"
                                         >
-                                            {/* Class/Faction Accent */}
-                                            <div
-                                                className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 rounded-r-full transition-all duration-300"
-                                                style={{
-                                                    backgroundColor: classColor,
-                                                    boxShadow: `0 0 15px ${classColor}`,
-                                                }}
-                                            />
-
-                                            <div className="relative h-16 w-16 flex-shrink-0">
-                                                <div className="absolute -inset-1 bg-gradient-to-tr from-white/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl transition-transform group-hover:scale-105">
-                                                    <div className="absolute inset-0 flex items-center justify-center text-2xl font-black text-zinc-700 select-none">
-                                                        {char.name.charAt(0)}
-                                                    </div>
-                                                    {char.avatarUrl && (
+                                            {/* Avatar or Class Icon Fallback */}
+                                            <div className="relative h-12 w-12 flex-shrink-0">
+                                                <div
+                                                    className="relative h-full w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-md transition-transform group-hover:scale-105"
+                                                    style={{ borderColor: `${classColor}40` }}
+                                                >
+                                                    {char.avatarUrl ? (
                                                         <img
                                                             src={char.avatarUrl}
                                                             alt={char.name}
-                                                            className="relative z-10 h-full w-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-500"
-                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                                            className="h-full w-full object-cover"
+                                                            onError={(e) => {
+                                                                if (classIconUrl) {
+                                                                    (e.target as HTMLImageElement).src = classIconUrl
+                                                                } else {
+                                                                    (e.target as HTMLImageElement).style.display = 'none'
+                                                                }
+                                                            }}
                                                         />
+                                                    ) : classIconUrl ? (
+                                                        <img
+                                                            src={classIconUrl}
+                                                            alt={wowClass?.nameFr || char.className}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-full w-full items-center justify-center font-bold text-white bg-zinc-800">
+                                                            {char.name.charAt(0)}
+                                                        </div>
                                                     )}
                                                 </div>
+                                                {/* Class Color Indicator */}
+                                                <div
+                                                    className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-zinc-950 shadow-sm"
+                                                    style={{ backgroundColor: classColor }}
+                                                    title={wowClass?.nameFr || char.className}
+                                                />
                                             </div>
 
+                                            {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="font-black text-white group-hover:text-primary transition-colors text-xl tracking-tighter uppercase">
+                                                    <span className="font-bold text-white text-base tracking-tight group-hover:text-primary transition-colors truncate">
                                                         {char.name}
-                                                    </p>
-                                                    <span className="px-1.5 py-0.5 rounded-lg bg-white/5 border border-white/5 text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                                                    </span>
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded-md text-[11px] font-semibold shrink-0",
+                                                        isMaxLevel
+                                                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                                            : "bg-white/5 text-zinc-400 border border-white/5"
+                                                    )}>
                                                         Niv. {char.level}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">{char.realm}</span>
-                                                    <span className="w-1 h-1 rounded-full bg-zinc-800" />
-                                                    <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">{char.className}</span>
+                                                <div className="flex items-center gap-1.5 mt-0.5 text-xs">
+                                                    <span className="text-zinc-400 font-medium truncate">{char.realm}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-zinc-700 shrink-0" />
+                                                    <span
+                                                        className="font-semibold shrink-0"
+                                                        style={{ color: classColor }}
+                                                    >
+                                                        {wowClass?.nameFr || char.className}
+                                                    </span>
                                                 </div>
                                             </div>
 
-                                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 mr-2">
-                                                <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
-                                                    <ChevronRight className="h-4 w-4 text-primary" />
-                                                </div>
+                                            {/* Action Icon */}
+                                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all text-xs font-semibold text-primary flex items-center gap-1 pr-1">
+                                                <span className="hidden sm:inline">Sélectionner</span>
+                                                <ChevronRight className="h-4 w-4" />
                                             </div>
                                         </button>
                                     )
                                 })}
+
+                                {sortedAndFilteredCharacters.length === 0 && (
+                                    <div className="py-12 text-center">
+                                        <p className="text-sm font-medium text-zinc-400">
+                                            Aucun personnage trouvé pour « {characterSearch} »
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCharacterSearch('')}
+                                            className="mt-2 text-xs font-semibold text-primary hover:underline"
+                                        >
+                                            Effacer le filtre
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="relative p-6 px-8 bg-zinc-950/50">
+                            {/* Footer */}
+                            <div className="relative p-3.5 px-6 bg-zinc-950/70 border-t border-white/5 flex items-center justify-between text-xs">
+                                <span className="text-zinc-400 font-medium">
+                                    {sortedAndFilteredCharacters.length} personnage{sortedAndFilteredCharacters.length > 1 ? 's' : ''} disponible{sortedAndFilteredCharacters.length > 1 ? 's' : ''}
+                                </span>
                                 <Button
                                     variant="ghost"
-                                    className="w-full h-12 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-white/5 transition-all rounded-2xl border border-transparent hover:border-white/5"
-                                    onClick={() => setShowCharacterPicker(false)}
+                                    className="h-8 px-3 text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg"
+                                    onClick={handleCloseCharacterPicker}
                                 >
-                                    Annuler la sélection
+                                    Fermer
                                 </Button>
                             </div>
                         </GlassCard>
