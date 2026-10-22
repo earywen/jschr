@@ -544,23 +544,32 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Classe *</Label>
                                         <Select
-                                            value={step2Form.watch('classId') || ''}
+                                            value={step2Form.watch('classId') || undefined}
                                             onValueChange={(value) => {
-                                                step2Form.setValue('classId', value)
-                                                step2Form.setValue('specId', '')
+                                                step2Form.setValue('classId', value, { shouldValidate: true })
+                                                step2Form.setValue('specId', '', { shouldValidate: true })
                                             }}
                                         >
-                                            <SelectTrigger className="h-12 bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50">
-                                                <SelectValue placeholder="Classe" />
+                                            <SelectTrigger className="h-12 w-full bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50">
+                                                <SelectValue placeholder="Sélectionnez une classe" />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-zinc-900 border-white/10 z-[100] rounded-xl overflow-hidden">
+                                            <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl overflow-hidden max-h-72">
                                                 {WOW_CLASSES.map((wowClass) => (
                                                     <SelectItem
                                                         key={wowClass.id}
                                                         value={wowClass.id}
-                                                        className="font-bold cursor-pointer transition-colors"
+                                                        className="font-medium cursor-pointer transition-colors py-2"
                                                     >
-                                                        <span style={{ color: wowClass.color }}>{wowClass.nameFr}</span>
+                                                        <div className="flex items-center gap-2.5">
+                                                            <img
+                                                                src={`https://render.worldofwarcraft.com/eu/icons/56/${wowClass.icon}.jpg`}
+                                                                alt={wowClass.nameFr}
+                                                                className="w-5 h-5 rounded border border-white/10 object-cover shrink-0"
+                                                            />
+                                                            <span style={{ color: wowClass.color }} className="font-semibold">
+                                                                {wowClass.nameFr}
+                                                            </span>
+                                                        </div>
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -570,26 +579,44 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">Spécialisation *</Label>
                                         <Select
-                                            value={step2Form.watch('specId') || ''}
-                                            onValueChange={(value) => step2Form.setValue('specId', value)}
+                                            value={step2Form.watch('specId') || undefined}
+                                            onValueChange={(value) => step2Form.setValue('specId', value, { shouldValidate: true })}
                                             disabled={!selectedClassId}
                                         >
-                                            <SelectTrigger
-                                                className="h-12 bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50"
-                                                style={{ borderColor: selectedClass?.color ? `${selectedClass.color}40` : undefined }}
-                                            >
-                                                <SelectValue placeholder="Spé" />
+                                            <SelectTrigger className="h-12 w-full bg-black/40 border-white/5 text-white rounded-xl focus:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed">
+                                                <SelectValue placeholder={selectedClassId ? "Sélectionnez une spécialisation" : "Choisissez d'abord une classe"} />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-zinc-900 border-white/10 z-[100] rounded-xl">
-                                                {availableSpecs.map((spec) => (
-                                                    <SelectItem
-                                                        key={spec.id}
-                                                        value={spec.id}
-                                                        className="font-bold cursor-pointer"
-                                                    >
-                                                        {spec.nameFr}
-                                                    </SelectItem>
-                                                ))}
+                                            <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl max-h-72">
+                                                {availableSpecs.map((spec) => {
+                                                    const roleBadge =
+                                                        spec.role === 'tank'
+                                                            ? { label: 'Tank', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' }
+                                                            : spec.role === 'healer'
+                                                            ? { label: 'Soigneur', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' }
+                                                            : { label: 'DPS', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' }
+
+                                                    return (
+                                                        <SelectItem
+                                                            key={spec.id}
+                                                            value={spec.id}
+                                                            className="font-medium cursor-pointer py-2"
+                                                        >
+                                                            <div className="flex items-center justify-between w-full gap-3">
+                                                                <div className="flex items-center gap-2.5">
+                                                                    <img
+                                                                        src={`https://render.worldofwarcraft.com/eu/icons/56/${spec.icon}.jpg`}
+                                                                        alt={spec.nameFr}
+                                                                        className="w-5 h-5 rounded border border-white/10 object-cover shrink-0"
+                                                                    />
+                                                                    <span className="font-semibold text-white">{spec.nameFr}</span>
+                                                                </div>
+                                                                <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold border uppercase shrink-0", roleBadge.color)}>
+                                                                    {roleBadge.label}
+                                                                </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    )
+                                                })}
                                             </SelectContent>
                                         </Select>
                                         {step2Form.formState.errors.specId && (
@@ -599,12 +626,27 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="warcraftlogsLink" className="text-xs font-bold uppercase tracking-wider text-zinc-300">Données WarcraftLogs</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="warcraftlogsLink" className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                                            Données WarcraftLogs
+                                        </Label>
+                                        {step2Form.watch('warcraftlogsLink') && (
+                                            <a
+                                                href={step2Form.watch('warcraftlogsLink')}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline transition-colors"
+                                            >
+                                                <span>Tester le lien</span>
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            </a>
+                                        )}
+                                    </div>
                                     <Input
                                         id="warcraftlogsLink"
                                         {...step2Form.register('warcraftlogsLink')}
-                                        placeholder="https://www.warcraftlogs.com/character/..."
-                                        className="h-12 bg-black/40 border-white/5 text-white placeholder:text-zinc-400 rounded-xl"
+                                        placeholder="https://www.warcraftlogs.com/character/eu/serveur/nom"
+                                        className="h-12 bg-black/40 border-white/5 text-white placeholder:text-zinc-400 rounded-xl focus:border-primary/50"
                                     />
                                 </div>
 
