@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ import {
     type MotivationFormData,
     type ApplicationFormData,
 } from '@/lib/validations/application'
-import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User, Search, X, Check, Plus, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User, Search, X, Check, Plus, Star, Cloud, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { GlassCard } from '@/components/ui/glass-card'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -53,6 +53,8 @@ const STEPS = [
     { id: 3, name: 'Motivation', icon: MessageSquare },
 ]
 
+const DRAFT_STORAGE_KEY = 'jsc_apply_draft_v1'
+
 export function ApplicationWizard({ onSubmit }: WizardProps) {
     const [currentStep, setCurrentStep] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -61,6 +63,8 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
     const [selectedBnetCharacter, setSelectedBnetCharacter] = useState<BattleNetCharacter | null>(null)
     const [showCharacterPicker, setShowCharacterPicker] = useState(false)
     const [characterSearch, setCharacterSearch] = useState('')
+    const [draftRestored, setDraftRestored] = useState(false)
+    const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
 
     const sortedAndFilteredCharacters = useMemo(() => {
         return [...fetchedCharacters]
@@ -137,6 +141,151 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
         }
     }
 
+    // Restore draft from localStorage on initial mount
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        try {
+            const raw = localStorage.getItem(DRAFT_STORAGE_KEY)
+            if (!raw) return
+            const draft = JSON.parse(raw)
+            if (!draft || draft.version !== 1) return
+
+            const hasContent = Boolean(
+                draft.step1?.characterName ||
+                draft.step1?.discordId ||
+                draft.step1?.battleTag ||
+                draft.step2?.classId ||
+                draft.step2?.raidExperience ||
+                draft.step3?.aboutMe ||
+                draft.step3?.motivation
+            )
+
+            if (!hasContent) return
+
+            if (draft.step1) step1Form.reset(draft.step1)
+            if (draft.step2) step2Form.reset(draft.step2)
+            if (draft.step3) step3Form.reset(draft.step3)
+            if (draft.selectedBnetCharacter) setSelectedBnetCharacter(draft.selectedBnetCharacter)
+            if (draft.currentStep && draft.currentStep >= 1 && draft.currentStep <= 3) {
+                setCurrentStep(draft.currentStep)
+            }
+            if (draft.updatedAt) setLastSavedAt(new Date(draft.updatedAt))
+            setDraftRestored(true)
+        } catch (e) {
+            console.error('Failed to restore draft from localStorage:', e)
+        }
+    }, [step1Form, step2Form, step3Form])
+
+    // Auto-save draft whenever values, step or character change
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+
+        const saveDraft = () => {
+            try {
+                const s1 = step1Form.getValues()
+                const s2 = step2Form.getValues()
+                const s3 = step3Form.getValues()
+
+                const hasContent = Boolean(
+                    s1.characterName ||
+                    s1.discordId ||
+                    s1.battleTag ||
+                    s2.classId ||
+                    s2.raidExperience ||
+                    s3.aboutMe ||
+                    s3.motivation
+                )
+
+                if (hasContent) {
+                    const draft = {
+                        version: 1,
+                        currentStep,
+                        updatedAt: Date.now(),
+                        selectedBnetCharacter,
+                        step1: s1,
+                        step2: s2,
+                        step3: s3,
+                    }
+                    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))
+                    setLastSavedAt(new Date())
+                }
+            } catch (err) {
+                console.warn('Failed to auto-save application draft:', err)
+            }
+        }
+
+        let timer: NodeJS.Timeout
+        const debouncedSave = () => {
+            clearTimeout(timer)
+            timer = setTimeout(saveDraft, 400)
+        }
+
+        const sub1 = step1Form.watch(debouncedSave)
+        const sub2 = step2Form.watch(debouncedSave)
+        const sub3 = step3Form.watch(debouncedSave)
+
+        // Save on step or character change
+        debouncedSave()
+
+        return () => {
+            clearTimeout(timer)
+            sub1.unsubscribe()
+            sub2.unsubscribe()
+            sub3.unsubscribe()
+        }
+    }, [currentStep, selectedBnetCharacter, step1Form, step2Form, step3Form])
+
+    // Warn before accidental window close if form has data
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isSubmitting) return
+            const s1 = step1Form.getValues()
+            const s2 = step2Form.getValues()
+            const s3 = step3Form.getValues()
+            const hasData = Boolean(
+                s1.characterName ||
+                s1.discordId ||
+                s2.classId ||
+                s2.raidExperience ||
+                s3.aboutMe ||
+                s3.motivation
+            )
+            if (hasData) {
+                e.preventDefault()
+                e.returnValue = ''
+            }
+        }
+        window.addEventListener('beforeunload', handleBeforeUnload)
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    }, [isSubmitting, step1Form, step2Form, step3Form])
+
+    const handleClearDraft = () => {
+        if (confirm('Voulez-vous vraiment effacer votre brouillon et recommencer à zéro ?')) {
+            if (typeof window !== 'undefined') {
+                try {
+                    localStorage.removeItem(DRAFT_STORAGE_KEY)
+                } catch (e) {}
+            }
+            step1Form.reset({ characterName: '', battleTag: '', discordId: '' })
+            step2Form.reset({
+                classId: '',
+                specId: '',
+                secondarySpecs: [],
+                warcraftlogsLink: '',
+                screenshotUrl: '',
+                avatarUrl: '',
+                raidExperience: '',
+            })
+            step3Form.reset({ aboutMe: '', whyJSC: '', motivation: '' })
+            setSelectedBnetCharacter(null)
+            setFormData({})
+            setCurrentStep(1)
+            setDraftRestored(false)
+            setLastSavedAt(null)
+        }
+    }
+
     const handleNext = async () => {
         if (currentStep === 1) {
             const isValid = await step1Form.trigger()
@@ -169,6 +318,8 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
             setIsSubmitting(true)
             const rawData = {
                 ...formData,
+                ...step1Form.getValues(),
+                ...step2Form.getValues(),
                 ...step3Form.getValues(),
             }
 
@@ -181,6 +332,11 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
             }
 
             await onSubmit(parseResult.data)
+            if (typeof window !== 'undefined') {
+                try {
+                    localStorage.removeItem(DRAFT_STORAGE_KEY)
+                } catch (e) {}
+            }
             setIsSubmitting(false)
         }
     }
@@ -433,7 +589,39 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                         style={{ width: `${progress}%` }}
                     />
                 </div>
+                <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium px-1">
+                    <span>Étape {currentStep} sur {STEPS.length}</span>
+                    <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                        <Cloud className="h-3.5 w-3.5 text-emerald-400" />
+                        {lastSavedAt ? 'Sauvegarde automatique active' : 'Sauvegarde automatique'}
+                    </span>
+                </div>
             </div>
+
+            {/* Restored Draft Banner */}
+            {draftRestored && (
+                <BlurFade delay={0.05}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-primary/10 border border-primary/25 backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse shrink-0" />
+                            <div className="text-xs">
+                                <span className="font-bold text-white">Brouillon restauré automatiquement</span>
+                                <p className="text-[11px] text-zinc-400">
+                                    Vos réponses précédentes ont été récupérées. Vous pouvez continuer votre saisie.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleClearDraft}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-white transition-colors self-start sm:self-center shrink-0 cursor-pointer"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Effacer et recommencer
+                        </button>
+                    </div>
+                </BlurFade>
+            )}
 
             {/* Step Layering */}
             <div className="relative">

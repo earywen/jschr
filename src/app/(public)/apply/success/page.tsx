@@ -1,11 +1,20 @@
 'use client'
 
+import { useEffect } from 'react'
 import { CheckCircle2, Home } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { BlurFade } from '@/components/ui/blur-fade'
 
 export default function ApplySuccessPage() {
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                localStorage.removeItem('jsc_apply_draft_v1')
+            } catch (e) {}
+        }
+    }, [])
+
     return (
         <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 overflow-hidden relative">
             {/* Background Glow */}
