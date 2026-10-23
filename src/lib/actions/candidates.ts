@@ -212,6 +212,13 @@ export async function deleteCandidate(candidateId: string): Promise<SubmitApplic
         return { success: false, error: 'Action non autorisée (GM uniquement)' }
     }
 
+    // Fetch discord_message_id before deletion to clean up Discord channel
+    const { data: candidateToDelete } = await supabase
+        .from('candidates')
+        .select('discord_message_id')
+        .eq('id', candidateId)
+        .single()
+
     // 2. Delete candidate (RLS policy handles authorization)
     const { error } = await supabase
         .from('candidates')
@@ -221,6 +228,15 @@ export async function deleteCandidate(candidateId: string): Promise<SubmitApplic
     if (error) {
         console.error('Delete error:', error)
         return { success: false, error: 'Erreur lors de la suppression' }
+    }
+
+    if (candidateToDelete?.discord_message_id) {
+        try {
+            const { deleteDiscordMessage } = await import('@/lib/discord/notifications')
+            await deleteDiscordMessage(candidateToDelete.discord_message_id)
+        } catch (e) {
+            console.error('Failed to delete Discord message:', e)
+        }
     }
 
     revalidatePath('/dashboard/candidates')
@@ -250,6 +266,13 @@ export async function deleteCandidates(candidateIds: string[]): Promise<SubmitAp
         return { success: false, error: 'Action non autorisée (GM uniquement)' }
     }
 
+    // Fetch discord_message_ids before deletion
+    const { data: candidatesToDelete } = await supabase
+        .from('candidates')
+        .select('discord_message_id')
+        .in('id', candidateIds)
+        .not('discord_message_id', 'is', null)
+
     // 2. Delete candidates (RLS policy handles authorization)
     const { error } = await supabase
         .from('candidates')
@@ -259,6 +282,17 @@ export async function deleteCandidates(candidateIds: string[]): Promise<SubmitAp
     if (error) {
         console.error('Delete error:', error)
         return { success: false, error: 'Erreur lors de la suppression multiple' }
+    }
+
+    if (candidatesToDelete && candidatesToDelete.length > 0) {
+        try {
+            const { deleteDiscordMessage } = await import('@/lib/discord/notifications')
+            await Promise.allSettled(
+                candidatesToDelete.map(c => deleteDiscordMessage(c.discord_message_id!))
+            )
+        } catch (e) {
+            console.error('Failed to delete Discord messages:', e)
+        }
     }
 
     return { success: true }
@@ -530,6 +564,26 @@ export async function updateCandidatesStatus(
     if (error) {
         console.error('Update status error:', error)
         return { success: false, error: 'Erreur lors de la mise à jour des statuts' }
+    }
+
+    // Close Discord votes for final statuses
+    if (newStatus === 'accepted' || newStatus === 'rejected') {
+        try {
+            const { data: candidatesToClose } = await supabase
+                .from('candidates')
+                .select('discord_message_id')
+                .in('id', candidateIds)
+                .not('discord_message_id', 'is', null)
+
+            if (candidatesToClose && candidatesToClose.length > 0) {
+                const { closeDiscordVote } = await import('@/lib/discord/notifications')
+                await Promise.allSettled(
+                    candidatesToClose.map(c => closeDiscordVote(c.discord_message_id!, newStatus as 'accepted' | 'rejected'))
+                )
+            }
+        } catch (e) {
+            console.error('Failed to close Discord votes:', e)
+        }
     }
 
     revalidatePath('/dashboard/candidates')

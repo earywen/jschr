@@ -104,6 +104,92 @@ export async function updateDiscordMessage(
     }
 }
 
+// Close Discord voting by removing buttons and updating embed header
+export async function closeDiscordVote(
+    messageId: string,
+    status: 'accepted' | 'rejected'
+): Promise<boolean> {
+    const botToken = process.env.DISCORD_BOT_TOKEN
+    const channelId = process.env.DISCORD_CHANNEL_ID
+
+    if (!botToken || !channelId || !messageId) {
+        return false
+    }
+
+    try {
+        const getRes = await fetch(
+            `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`,
+            {
+                headers: {
+                    Authorization: `Bot ${botToken}`,
+                },
+            }
+        )
+
+        let embeds: any[] | undefined = undefined
+        if (getRes.ok) {
+            const currentMessage = await getRes.json()
+            if (currentMessage.embeds && currentMessage.embeds.length > 0) {
+                const embed = { ...currentMessage.embeds[0] }
+                const statusTag = status === 'accepted' ? '✅ [ACCEPTÉ]' : '❌ [REFUSÉ]'
+                const statusColor = status === 'accepted' ? 0x2ecc71 : 0xe74c3c
+                const cleanTitle = (embed.title || 'Candidature').replace(/^(✅ \[ACCEPTÉ\]|❌ \[REFUSÉ\])\s*/, '')
+                embed.title = `${statusTag} ${cleanTitle}`
+                embed.color = statusColor
+                embeds = [embed]
+            }
+        }
+
+        const patchPayload: Record<string, any> = { components: [] }
+        if (embeds) {
+            patchPayload.embeds = embeds
+        }
+
+        const response = await fetch(
+            `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bot ${botToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(patchPayload),
+            }
+        )
+
+        return response.ok
+    } catch (error) {
+        console.error('Error closing Discord vote:', error)
+        return false
+    }
+}
+
+// Delete an existing Discord message (on candidate deletion)
+export async function deleteDiscordMessage(messageId: string): Promise<boolean> {
+    const botToken = process.env.DISCORD_BOT_TOKEN
+    const channelId = process.env.DISCORD_CHANNEL_ID
+
+    if (!botToken || !channelId || !messageId) {
+        return false
+    }
+
+    try {
+        const response = await fetch(
+            `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bot ${botToken}`,
+                },
+            }
+        )
+        return response.ok
+    } catch (error) {
+        console.error('Discord API delete error:', error)
+        return false
+    }
+}
+
 // WoW class colors as Discord embed colors (decimal values)
 const CLASS_COLORS: Record<string, number> = {
     warrior: 0xC79C6E,

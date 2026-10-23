@@ -103,6 +103,33 @@ export async function POST(req: NextRequest) {
                 });
             }
 
+            // Check candidate status (voting is locked once accepted or rejected)
+            const { data: candidateData } = await supabaseAdmin
+                .from('candidates')
+                .select('status')
+                .eq('id', candidateId)
+                .single();
+
+            if (!candidateData) {
+                return NextResponse.json({
+                    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                    data: {
+                        content: '❌ Candidature introuvable.',
+                        flags: 64, // Ephemeral
+                    },
+                });
+            }
+
+            if (candidateData.status === 'accepted' || candidateData.status === 'rejected') {
+                return NextResponse.json({
+                    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                    data: {
+                        content: '🛑 Le scrutin pour cette candidature est clos.',
+                        flags: 64, // Ephemeral
+                    },
+                });
+            }
+
             // 2. Cast the vote
             // Check if already voted
             const { data: existingVote } = await supabaseAdmin

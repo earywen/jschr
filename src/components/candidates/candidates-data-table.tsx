@@ -423,10 +423,11 @@ export function createColumns(
             const wowSpec = row.original.wow_spec
             const wowClass = row.original.wow_class
             const secondarySpecs = (row.original as any).secondary_specs as string[] | undefined
+            const isSpontaneous = (row.original as any).is_spontaneous as boolean | undefined
             return (
-                <div className="text-center flex items-center justify-center gap-1.5">
+                <div className="text-center flex items-center justify-center gap-1.5 flex-wrap">
                     <span
-                        className="text-sm"
+                        className="text-sm font-medium"
                         style={{ color: wowClass?.color || '#94A3B8' }}
                     >
                         {wowSpec?.name || '—'}
@@ -437,6 +438,14 @@ export function createColumns(
                             title={`Spé(s) secondaire(s) : ${secondarySpecs.join(', ')}`}
                         >
                             +{secondarySpecs.length}
+                        </span>
+                    )}
+                    {isSpontaneous && (
+                        <span
+                            className="text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded uppercase tracking-wider cursor-help"
+                            title="Candidature spontanée (besoin fermé pour cette spécialisation)"
+                        >
+                            Spontanée
                         </span>
                     )}
                 </div>

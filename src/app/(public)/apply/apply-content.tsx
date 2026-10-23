@@ -74,7 +74,7 @@ export function ApplyContent({ needs }: ApplyContentProps) {
                 )}
 
                 {/* Wizard */}
-                <ApplicationWizard onSubmit={handleSubmit} />
+                <ApplicationWizard onSubmit={handleSubmit} needs={needs} />
 
                 <p className="mt-12 text-center text-xs font-medium text-zinc-400 uppercase tracking-widest">
                     &copy; 2026 JET SET CLUB

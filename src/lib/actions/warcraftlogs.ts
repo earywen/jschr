@@ -51,3 +51,31 @@ export async function fetchWarcraftLogsForCandidate(
         color: wlogsData.color,
     }
 }
+
+export async function refreshCandidateLogs(candidateId: string): Promise<FetchWlogsResult> {
+    const { getUserRole } = await import('@/lib/auth/role')
+    const user = await getUserRole()
+
+    if (!user || (user.role !== 'officer' && user.role !== 'gm')) {
+        return { success: false, error: 'Accès réservé aux Officiers et au Grand Maître.' }
+    }
+
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
+
+    const { data: candidate, error } = await supabase
+        .from('candidates')
+        .select('warcraftlogs_link')
+        .eq('id', candidateId)
+        .single()
+
+    if (error || !candidate) {
+        return { success: false, error: 'Candidature non trouvée.' }
+    }
+
+    if (!candidate.warcraftlogs_link) {
+        return { success: false, error: 'Aucun lien WarcraftLogs renseigné pour cette candidature.' }
+    }
+
+    return fetchWarcraftLogsForCandidate(candidateId, candidate.warcraftlogs_link)
+}

@@ -27,13 +27,15 @@ import {
     type MotivationFormData,
     type ApplicationFormData,
 } from '@/lib/validations/application'
-import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User, Search, X, Check, Plus, Star, Cloud, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Send, Sword, MessageSquare, ExternalLink, LayoutGrid, Target, User, Search, X, Check, Plus, Star, Cloud, Trash2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { GlassCard } from '@/components/ui/glass-card'
 import { BlurFade } from '@/components/ui/blur-fade'
+import type { RecruitmentNeed } from '@/lib/actions/recruitment'
 
 interface WizardProps {
     onSubmit: (data: ApplicationFormData) => Promise<void>
+    needs?: RecruitmentNeed[]
 }
 
 interface BattleNetCharacter {
@@ -55,7 +57,7 @@ const STEPS = [
 
 const DRAFT_STORAGE_KEY = 'jsc_apply_draft_v1'
 
-export function ApplicationWizard({ onSubmit }: WizardProps) {
+export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
     const [currentStep, setCurrentStep] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [formData, setFormData] = useState<Partial<ApplicationFormData>>({})
@@ -131,6 +133,12 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
     const availableSpecs = selectedClassId ? getSpecsByClass(selectedClassId) : []
     const secondaryOptions = availableSpecs.filter(spec => spec.id !== selectedMainSpecId)
     const selectedClass = selectedClassId ? getClassById(selectedClassId) : null
+
+    const isMainSpecClosed = useMemo(() => {
+        if (!selectedMainSpecId || !needs || needs.length === 0) return false
+        const match = needs.find(n => n.spec.id === selectedMainSpecId || n.specId === selectedMainSpecId)
+        return !match || match.priority === 'closed'
+    }, [selectedMainSpecId, needs])
 
     const toggleSecondarySpec = (specId: string) => {
         const current = step2Form.getValues('secondarySpecs') || []
@@ -861,6 +869,14 @@ export function ApplicationWizard({ onSubmit }: WizardProps) {
                                         </Select>
                                         {step2Form.formState.errors.specId && (
                                             <p className="text-xs font-bold text-destructive mt-1">{step2Form.formState.errors.specId.message}</p>
+                                        )}
+                                        {isMainSpecClosed && (
+                                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs mt-2 animate-in fade-in duration-300">
+                                                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <span className="font-bold text-amber-300">Candidature Spontanée :</span> Le recrutement pour cette spécialisation est actuellement fermé. Votre dossier sera étudié en profil d'exception ou placé sur liste d'attente.
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>

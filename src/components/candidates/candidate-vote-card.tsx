@@ -53,7 +53,7 @@ export function CandidateVoteCard({
         return (
             <div className="flex flex-col gap-4">
                 {/* VOTING SECTION (STAYING COMPACT) */}
-                {canVote && (
+                {canVote ? (
                     <div className="flex items-center gap-2 bg-black/40 p-1 rounded-full border border-white/5">
                         <Button
                             onClick={() => handleVote('yes')}
@@ -99,6 +99,12 @@ export function CandidateVoteCard({
                             {isLoading === 'no' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsDown className="h-4 w-4" />}
                             <span className="text-[11px] uppercase tracking-wider">Non</span>
                         </Button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center py-1.5 px-3 bg-black/40 rounded-full border border-white/5">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                            Scrutin clos
+                        </span>
                     </div>
                 )}
 

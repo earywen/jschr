@@ -1,6 +1,8 @@
 import { Shield, Settings as SettingsIcon, Bell, Users, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RecruitmentSync } from '@/components/settings/recruitment-sync'
+import { RecruitmentEditor } from '@/components/settings/recruitment-editor'
+import { getAllRecruitmentNeedsForAdmin } from '@/lib/actions/recruitment'
 
 function Card({
     children,
@@ -35,7 +37,9 @@ function SectionHeader({
     )
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+    const adminSpecs = await getAllRecruitmentNeedsForAdmin()
+
     return (
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex items-center gap-4 mb-2">
@@ -49,6 +53,17 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <Card className="md:col-span-2">
+                    <SectionHeader icon={Users}>Besoins & Critères de Recrutement</SectionHeader>
+                    <div className="space-y-6">
+                        <RecruitmentSync />
+                        <div className="border-t border-white/5 pt-6">
+                            <h4 className="text-sm font-bold text-white mb-4">Ajustement Manuel des Priorités par Spécialisation</h4>
+                            <RecruitmentEditor initialSpecs={adminSpecs} />
+                        </div>
+                    </div>
+                </Card>
+
                 <Card>
                     <SectionHeader icon={Shield}>Rôles & Permissions</SectionHeader>
                     <p className="text-[#94A3B8] text-sm mb-4">
@@ -69,7 +84,7 @@ export default function SettingsPage() {
                     </div>
                 </Card>
 
-                <Card>
+                <Card className="md:col-span-2">
                     <SectionHeader icon={Globe}>Intégration WarcraftLogs</SectionHeader>
                     <p className="text-[#94A3B8] text-sm mb-4">
                         Configurez vos clés d'API et les paramètres de synchronisation.
@@ -77,11 +92,6 @@ export default function SettingsPage() {
                     <div className="rounded-2xl bg-white/5 p-4 text-center">
                         <p className="text-xs text-[#94A3B8] italic">Bientôt disponible</p>
                     </div>
-                </Card>
-
-                <Card>
-                    <SectionHeader icon={Users}>Critères de Recrutement</SectionHeader>
-                    <RecruitmentSync />
                 </Card>
             </div>
         </div>

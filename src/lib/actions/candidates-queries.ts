@@ -21,6 +21,7 @@ export interface CandidateWithDetails extends Candidate {
         role: string
     } | null
     approval_rate?: number
+    is_spontaneous?: boolean
 }
 
 export async function getCandidates(
@@ -56,15 +57,26 @@ export async function getCandidates(
         .select('candidate_id, vote')
         .in('candidate_id', candidateIds)
 
+    // Récupérer les besoins de recrutement pour identifier les candidatures spontanées
+    const { data: needsData } = await supabaseAdmin
+        .from('recruitment_needs')
+        .select('spec_id, priority')
+
+    const openSpecIds = new Set(
+        needsData?.filter(n => n.priority !== 'closed').map(n => n.spec_id) || []
+    )
+
     const candidatesWithApproval = data.map(candidate => {
         const candidateVotes = votesData?.filter(v => v.candidate_id === candidate.id) || []
         const yes = candidateVotes.filter(v => v.vote === 'yes').length
         const total = candidateVotes.length
         const approval_rate = total > 0 ? Math.round((yes / total) * 100) : 0
+        const is_spontaneous = candidate.spec_id ? !openSpecIds.has(candidate.spec_id) : false
 
         return {
             ...candidate,
-            approval_rate
+            approval_rate,
+            is_spontaneous,
         }
     })
 

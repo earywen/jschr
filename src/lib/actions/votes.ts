@@ -62,6 +62,27 @@ export async function castVote(
     const supabase = await createClient()
     const supabaseAdmin = createAdminClient()
 
+    // Check candidate status (voting is locked once accepted or rejected)
+    const { data: candidate, error: candidateError } = await supabaseAdmin
+        .from('candidates')
+        .select('status, discord_message_id')
+        .eq('id', candidateId)
+        .single()
+
+    if (candidateError || !candidate) {
+        return {
+            success: false,
+            error: 'Candidature non trouvée.',
+        }
+    }
+
+    if (candidate.status === 'accepted' || candidate.status === 'rejected') {
+        return {
+            success: false,
+            error: 'Le scrutin pour cette candidature est clos.',
+        }
+    }
+
     // Check if user already voted
     const { data: existingVote } = await supabase
         .from('votes')
@@ -98,13 +119,7 @@ export async function castVote(
     }
 
     // Sync Discord message with new vote counts
-    const { data: candidate } = await supabaseAdmin
-        .from('candidates')
-        .select('discord_message_id')
-        .eq('id', candidateId)
-        .single()
-
-    if (candidate?.discord_message_id) {
+    if (candidate.discord_message_id) {
         // Get updated vote counts
         const { data: allVotes } = await supabaseAdmin
             .from('votes')

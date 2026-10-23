@@ -43,6 +43,24 @@ export async function updateCandidateStatus(
         }
     }
 
+    // Close Discord vote if status is final (accepted or rejected)
+    if (newStatus === 'accepted' || newStatus === 'rejected') {
+        try {
+            const { data: candidate } = await supabase
+                .from('candidates')
+                .select('discord_message_id')
+                .eq('id', candidateId)
+                .single()
+
+            if (candidate?.discord_message_id) {
+                const { closeDiscordVote } = await import('@/lib/discord/notifications')
+                await closeDiscordVote(candidate.discord_message_id, newStatus)
+            }
+        } catch (e) {
+            console.error('Failed to close Discord vote:', e)
+        }
+    }
+
     revalidatePath('/dashboard/candidates')
     revalidatePath(`/dashboard/candidates/${candidateId}`)
 

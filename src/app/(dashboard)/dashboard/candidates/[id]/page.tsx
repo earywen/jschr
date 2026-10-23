@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { DecisionButtons } from '@/components/candidates/decision-buttons'
 import { CandidateVoteCard } from '@/components/candidates/candidate-vote-card'
 import { DeleteCandidateButton } from '@/components/candidates/delete-candidate-button'
+import { RefreshLogsButton } from '@/components/candidates/refresh-logs-button'
 import { SafeImage } from '@/components/ui/safe-image'
 import { CopyableText } from '@/components/ui/copyable-text'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -128,7 +129,15 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                     Retour aux candidatures
                 </Link>
 
-                {isGM && <DeleteCandidateButton candidateId={candidate.id} />}
+                <div className="flex items-center gap-3">
+                    {isOfficerOrHigher && (
+                        <RefreshLogsButton
+                            candidateId={candidate.id}
+                            hasLink={Boolean(candidate.warcraftlogs_link)}
+                        />
+                    )}
+                    {isGM && <DeleteCandidateButton candidateId={candidate.id} />}
+                </div>
             </div>
 
             {/* Profile Header Card */}
@@ -186,6 +195,14 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                                 <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/25 px-2 py-0.5 rounded-md leading-none">
                                     Principale
                                 </span>
+                                {candidate.is_spontaneous && (
+                                    <>
+                                        <span className="text-white/20">•</span>
+                                        <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                            Candidature Spontanée
+                                        </span>
+                                    </>
+                                )}
                                 {(candidate as any).secondary_specs && (candidate as any).secondary_specs.length > 0 && (
                                     <>
                                         <span className="text-white/20">•</span>
@@ -279,7 +296,7 @@ export default async function CandidateDetailPage({ params }: PageProps) {
                                 currentVote={myVote}
                                 synthesis={voteSynthesis}
                                 showSynthesis={isOfficerOrHigher}
-                                canVote={isMemberOrHigher && candidate.status === 'pending'}
+                                canVote={isMemberOrHigher && (candidate.status === 'pending' || candidate.status === 'waitlist')}
                                 variant="header"
                             />
                         </div>

@@ -87,3 +87,115 @@ export async function getRecruitmentNeeds() {
         return a.class.name.localeCompare(b.class.name)
     })
 }
+
+export type AdminRecruitmentSpec = {
+    specId: string
+    specName: string
+    specNameFr: string
+    className: string
+    classNameFr: string
+    classColor: string
+    classIcon: string
+    specIcon: string
+    role: 'tank' | 'healer' | 'dps'
+    priority: 'high' | 'medium' | 'low' | 'closed'
+}
+
+export async function getAllRecruitmentNeedsForAdmin(): Promise<AdminRecruitmentSpec[]> {
+    const supabase = await createClient()
+
+    const { data: dbSpecs, error: specsError } = await supabase
+        .from('wow_specs')
+        .select(`
+            id,
+            name,
+            role,
+            class:wow_classes!inner (
+                id,
+                name,
+                color
+            )
+        `)
+
+    if (specsError || !dbSpecs) {
+        console.error('Error fetching specs for admin:', specsError)
+        return []
+    }
+
+    const { data: needs } = await supabase
+        .from('recruitment_needs')
+        .select('spec_id, priority')
+
+    const needsMap = new Map<string, 'high' | 'medium' | 'low' | 'closed'>()
+    if (needs) {
+        needs.forEach(n => needsMap.set(n.spec_id, n.priority))
+    }
+
+    const result: AdminRecruitmentSpec[] = dbSpecs.map(item => {
+        const specName = item.name
+        const className = item.class.name
+
+        const staticClass = WOW_CLASSES.find(c => c.name.toLowerCase() === className.toLowerCase())
+        const staticSpec = WOW_SPECS.find(s =>
+            s.name.toLowerCase() === specName.toLowerCase() &&
+            (!staticClass || s.classId === staticClass.id)
+        )
+
+        return {
+            specId: item.id,
+            specName: specName,
+            specNameFr: staticSpec?.nameFr || specName,
+            className: className,
+            classNameFr: staticClass?.nameFr || className,
+            classColor: item.class.color || staticClass?.color || '#FFFFFF',
+            classIcon: staticClass?.icon || 'inv_misc_questionmark',
+            specIcon: staticSpec?.icon || 'inv_misc_questionmark',
+            role: item.role as 'tank' | 'healer' | 'dps',
+            priority: (needsMap.get(item.id) as 'high' | 'medium' | 'low' | 'closed') || 'closed',
+        }
+    })
+
+    return result.sort((a, b) => {
+        const classComp = a.classNameFr.localeCompare(b.classNameFr)
+        if (classComp !== 0) return classComp
+        return a.specNameFr.localeCompare(b.specNameFr)
+    })
+}
+
+export async function updateRecruitmentPriority(
+    specId: string,
+    priority: 'high' | 'medium' | 'low' | 'closed'
+): Promise<{ success: boolean; error?: string }> {
+    const { getUserRole } = await import('@/lib/auth/role')
+    const user = await getUserRole()
+
+    if (!user || user.role !== 'gm') {
+        return { success: false, error: 'Accès réservé au Grand Maître.' }
+    }
+
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminSupabase = createAdminClient()
+
+    const { error } = await adminSupabase
+        .from('recruitment_needs')
+        .upsert(
+            {
+                spec_id: specId,
+                priority,
+                updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'spec_id' }
+        )
+
+    if (error) {
+        console.error('Error updating recruitment priority:', error)
+        return { success: false, error: 'Erreur lors de la mise à jour de la priorité.' }
+    }
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/')
+    revalidatePath('/apply')
+    revalidatePath('/dashboard/settings')
+
+    return { success: true }
+}

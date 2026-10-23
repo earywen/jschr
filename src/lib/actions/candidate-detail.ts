@@ -23,5 +23,21 @@ export async function getCandidateById(
         return null
     }
 
-    return data as CandidateWithDetails
+    // Check if spontaneous
+    let is_spontaneous = false
+    if (data.spec_id) {
+        const { createAdminClient } = await import('@/lib/supabase/server')
+        const adminSupabase = createAdminClient()
+        const { data: need } = await adminSupabase
+            .from('recruitment_needs')
+            .select('priority')
+            .eq('spec_id', data.spec_id)
+            .single()
+        is_spontaneous = !need || need.priority === 'closed'
+    }
+
+    return {
+        ...data,
+        is_spontaneous,
+    } as CandidateWithDetails
 }

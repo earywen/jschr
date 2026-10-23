@@ -82,7 +82,7 @@ export function CandidateMobileCard({ candidate }: CandidateMobileCardProps) {
                             <h3 className="font-bold text-white text-base leading-none mb-1">
                                 {candidate.name}
                             </h3>
-                            <div className="flex items-center gap-1.5 text-xs">
+                            <div className="flex items-center gap-1.5 text-xs flex-wrap">
                                 <span style={{ color: specColor }} className="font-medium">
                                     {candidate.wow_spec?.name}
                                 </span>
@@ -90,6 +90,11 @@ export function CandidateMobileCard({ candidate }: CandidateMobileCardProps) {
                                 <span className="text-zinc-400">
                                     {candidate.wow_class?.name}
                                 </span>
+                                {candidate.is_spontaneous && (
+                                    <span className="text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1 py-0.5 rounded uppercase tracking-wider">
+                                        Spontanée
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
