@@ -70,11 +70,18 @@ export async function submitApplication(
         return s?.nameFr || getSpecNameFromId(id)
     })
 
+    // Consolidate raid experience with declared raid alts if present
+    let consolidatedRaidExp = parsed.data.raidExperience
+    if (parsed.data.alts?.trim()) {
+        consolidatedRaidExp = `${consolidatedRaidExp}\n\n[Rerolls viables en raid : ${parsed.data.alts.trim()}]`
+    }
+
     // Insert candidate
     // Use admin client to bypass RLS strictness during submission
     const adminSupabase = createAdminClient()
     const insertPayload: any = {
         name: parsed.data.characterName,
+        realm: parsed.data.realm || null,
         battle_tag: parsed.data.battleTag || null,
         discord_id: parsed.data.discordId || null,
         class_id: wowClass.id,
@@ -83,7 +90,7 @@ export async function submitApplication(
         warcraftlogs_link: parsed.data.warcraftlogsLink || null,
         screenshot_url: parsed.data.screenshotUrl || null,
         avatar_url: parsed.data.avatarUrl || null,
-        raid_experience: parsed.data.raidExperience || null,
+        raid_experience: consolidatedRaidExp || null,
         about_me: parsed.data.aboutMe || null,
         why_jsc: parsed.data.whyJSC || null,
         motivation: parsed.data.motivation,
@@ -156,7 +163,7 @@ export async function submitApplication(
         parsed.data.characterName,
         getClassNameFromId(parsed.data.classId),
         mainSpecDisplayName,
-        parsed.data.raidExperience,
+        consolidatedRaidExp,
         parsed.data.aboutMe,
         parsed.data.whyJSC,
         parsed.data.motivation,
@@ -168,7 +175,8 @@ export async function submitApplication(
             wlogsLink: parsed.data.warcraftlogsLink,
             screenshotUrl: parsed.data.screenshotUrl,
             avatarUrl: parsed.data.avatarUrl,
-            secondarySpecs: secondarySpecsNames
+            secondarySpecs: secondarySpecsNames,
+            realm: parsed.data.realm,
         }
     )
 

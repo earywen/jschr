@@ -2,12 +2,14 @@
 
 import { ApplicationWizard } from '@/components/apply/application-wizard'
 import { ApplicationFormData } from '@/lib/validations/application'
-import { submitApplication } from '@/lib/actions/candidates' // Make sure this is safe to import in client component (it should be a server action)
+import { submitApplication } from '@/lib/actions/candidates'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { RecruitmentBoard } from '@/components/recruitment/recruitment-board'
+import { GuildPresentation } from '@/components/recruitment/guild-presentation'
 import { RecruitmentNeed } from '@/lib/actions/recruitment'
+import { Youtube } from 'lucide-react'
 
 interface ApplyContentProps {
     needs: RecruitmentNeed[]
@@ -46,8 +48,8 @@ export function ApplyContent({ needs }: ApplyContentProps) {
             <div className="relative z-10">
                 {/* Header */}
                 <BlurFade delay={0.1}>
-                    <div className="mx-auto max-w-2xl text-center mb-12">
-                        <div className="flex justify-center mb-8">
+                    <div className="mx-auto max-w-2xl text-center mb-10">
+                        <div className="flex justify-center mb-6">
                             <img
                                 src="/logo jsc.png"
                                 alt="Jet Set Club Logo"
@@ -61,6 +63,9 @@ export function ApplyContent({ needs }: ApplyContentProps) {
                         </div>
                     </div>
                 </BlurFade>
+
+                {/* Guild Presentation & Pillars */}
+                <GuildPresentation />
 
                 {/* Recruitment Board */}
                 <RecruitmentBoard initialNeeds={needs} />
@@ -76,9 +81,18 @@ export function ApplyContent({ needs }: ApplyContentProps) {
                 {/* Wizard */}
                 <ApplicationWizard onSubmit={handleSubmit} needs={needs} />
 
-                <p className="mt-12 text-center text-xs font-medium text-zinc-400 uppercase tracking-widest">
-                    &copy; 2026 JET SET CLUB
-                </p>
+                <div className="mt-12 flex flex-col items-center justify-center gap-2 text-center text-xs font-medium text-zinc-400 uppercase tracking-widest">
+                    <a
+                        href="https://www.youtube.com/@wowJSC/videos"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-red-400 transition-colors normal-case text-xs"
+                    >
+                        <Youtube className="w-4 h-4 text-red-500" />
+                        <span>Chaîne YouTube officielle @wowJSC</span>
+                    </a>
+                    <p>&copy; 2026 JET SET CLUB · TOUS DROITS RÉSERVÉS</p>
+                </div>
             </div>
         </div>
     )

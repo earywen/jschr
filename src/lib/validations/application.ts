@@ -3,6 +3,7 @@ import { z } from 'zod'
 // Step 1: Identity
 export const identitySchema = z.object({
     characterName: z.string().min(2, 'Le nom doit contenir au moins 2 caractères').max(50),
+    realm: z.string().min(2, 'Veuillez renseigner votre royaume / serveur (ex: Hyjal)').max(50),
     battleTag: z.string().min(3, 'BattleTag requis (ex: Joueur#1234)'),
     discordId: z.string().min(2, 'Discord ID requis'),
 })
@@ -12,17 +13,27 @@ export const characterSchema = z.object({
     classId: z.string().min(1, 'Veuillez sélectionner une classe'),
     specId: z.string().min(1, 'Veuillez sélectionner votre spécialisation principale'),
     secondarySpecs: z.array(z.string()).optional(),
+    alts: z.string().max(1000, 'Maximum 1000 caractères').optional(),
     warcraftlogsLink: z.string().url('URL invalide').optional().or(z.literal('')),
     screenshotUrl: z.string().optional(),
     avatarUrl: z.string().optional(),
     raidExperience: z.string().min(20, 'Décrivez votre expérience de raid (minimum 20 caractères)').max(1500, 'Maximum 1500 caractères'),
 })
 
-// Step 3: Motivation
+// Step 3: Motivation & Commitments
 export const motivationSchema = z.object({
     aboutMe: z.string().min(20, 'Parlez-nous un peu de vous (minimum 20 caractères)').max(1000, 'Maximum 1000 caractères'),
     whyJSC: z.string().min(20, 'Expliquez ce qui vous attire chez JSC (minimum 20 caractères)').max(1000, 'Maximum 1000 caractères'),
     motivation: z.string().min(50, 'Votre message doit contenir au moins 50 caractères').max(1500, 'Maximum 1500 caractères'),
+    commitmentSchedule: z.boolean().refine(val => val === true, {
+        message: 'Vous devez confirmer votre disponibilité pour les raids des jeudis et lundis (20h45 - 23h45)',
+    }),
+    commitmentRoster: z.boolean().refine(val => val === true, {
+        message: 'Vous devez accepter le principe de rotation équitable sur le roster de 24-25 joueurs',
+    }),
+    commitmentMic: z.boolean().refine(val => val === true, {
+        message: 'Vous devez posséder un micro opérationnel et vous engager à communiquer en vocal',
+    }),
 })
 
 // Combined schema for full application

@@ -249,6 +249,7 @@ export async function notifyNewCandidate(
         screenshotUrl?: string | null
         avatarUrl?: string | null
         secondarySpecs?: string[] | null
+        realm?: string | null
     }
 ): Promise<string | null> {
     const classColor = CLASS_COLORS[className.toLowerCase().replace(/\s/g, '')] || 0x5865F2
@@ -256,7 +257,8 @@ export async function notifyNewCandidate(
     const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`
 
     // Build description with all text content
-    let description = `**${candidateName}** a postulé pour rejoindre la guilde.\n\n`
+    const realmDisplay = data?.realm ? ` (${data.realm})` : ''
+    let description = `**${candidateName}**${realmDisplay} a postulé pour rejoindre la guilde.\n\n`
 
     // Add text sections to description (more compact, uses full width)
     if (raidExperience) {

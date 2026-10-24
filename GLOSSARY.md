@@ -59,3 +59,25 @@ _Avoid_: Parse, stat, score wlogs
 **Besoin de Recrutement**:
 Niveau de priorité (`closed`, `low`, `medium`, `high`) défini par spécialisation de classe guidant les candidatures attendues.
 _Avoid_: Slot, recherche, offre
+
+### Domaine Raid & Vie de Guilde
+
+**Roster Mythique**:
+Effectif officiel de 24 à 25 joueurs constituant l'équipe de progression de la guilde en raid mythique sur un palier donné.
+_Avoid_: Équipe, line-up, effectif
+
+**Soirs de Raid Officiels**:
+Séances hebdomadaires fixes et obligatoires dédiées à la progression en raid mythique (jeudis et lundis, de 20h45 à 23h45 avec pause).
+_Avoid_: Raids obligatoires, soirs de farm, jours de raid
+
+**Raid Optionnel (HM)**:
+Séance hebdomadaire sans obligation de présence (mercredis) consacrée au raid en mode Héroïque et à la convivialité.
+_Avoid_: Raid bonus, raid reroll, soir supplémentaire
+
+**Rotation de Roster**:
+Principe de roulement équitable appliqué à l'ensemble des 24-25 joueurs du roster mythique pour assurer un temps de jeu partagé et prévenir l'exclusion.
+_Avoid_: Banc, bench, mise au banc, turn-over
+
+**Cutting Edge (CE)**:
+Haut-fait attestant de la défaite du dernier boss d'un palier de raid en difficulté Mythique avant la sortie du palier suivant, critère d'expérience privilégié lors de l'évaluation d'un candidat.
+_Avoid_: Clean mythique, curve, fin de palier
