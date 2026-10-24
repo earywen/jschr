@@ -70,6 +70,39 @@ interface BattleNetCharacter {
     avatarUrl: string
 }
 
+export interface DeclaredAlt {
+    id: string
+    source: 'bnet' | 'manual'
+    name?: string
+    realm?: string
+    classId: string
+    specId?: string
+}
+
+function formatAltsToString(alts: DeclaredAlt[]): string {
+    return alts
+        .map(alt => {
+            const wowClass = getClassById(alt.classId)
+            const wowSpec = alt.specId ? WOW_SPECS.find(s => s.id === alt.specId) : null
+            const classTitle = wowClass?.nameFr || alt.classId
+            const specTitle = wowSpec ? wowSpec.nameFr : ''
+
+            let label = ''
+            if (alt.name) {
+                label += alt.name
+                if (alt.realm) label += ` (${alt.realm})`
+                label += ` - ${classTitle}`
+            } else {
+                label += classTitle
+            }
+            if (specTitle) {
+                label += ` (${specTitle})`
+            }
+            return label
+        })
+        .join(', ')
+}
+
 const STEPS = [
     { id: 1, name: 'Identité', icon: User },
     { id: 2, name: 'Personnage', icon: Sword },
@@ -90,6 +123,11 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
     const [characterSearch, setCharacterSearch] = useState('')
     const [draftRestored, setDraftRestored] = useState(false)
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+
+    // Rerolls state
+    const [declaredAlts, setDeclaredAlts] = useState<DeclaredAlt[]>([])
+    const [manualAltClassId, setManualAltClassId] = useState<string>('')
+    const [manualAltSpecId, setManualAltSpecId] = useState<string>('')
 
     const sortedAndFilteredCharacters = useMemo(() => {
         return [...fetchedCharacters]
@@ -178,6 +216,64 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
         }
     }
 
+    // Reroll helpers & handlers
+    const manualAltAvailableSpecs = manualAltClassId ? getSpecsByClass(manualAltClassId) : []
+
+    const availableBnetAlts = useMemo(() => {
+        const mainCharName = step1Form.watch('characterName')?.toLowerCase().trim()
+        const mainCharRealm = step1Form.watch('realm')?.toLowerCase().trim()
+        return fetchedCharacters.filter((char) => {
+            const isMain = char.name.toLowerCase().trim() === mainCharName && (!mainCharRealm || char.realm.toLowerCase().trim() === mainCharRealm)
+            const alreadyAdded = declaredAlts.some(alt =>
+                alt.source === 'bnet' &&
+                alt.name?.toLowerCase().trim() === char.name.toLowerCase().trim() &&
+                alt.realm?.toLowerCase().trim() === char.realm.toLowerCase().trim()
+            )
+            return !isMain && !alreadyAdded
+        })
+    }, [fetchedCharacters, step1Form, declaredAlts])
+
+    const handleAddBnetAlt = (char: BattleNetCharacter) => {
+        const classSlug = getClassIdFromName(char.className)
+        if (!classSlug) return
+        const specs = getSpecsByClass(classSlug)
+        const newAlt: DeclaredAlt = {
+            id: `bnet-${char.name}-${char.realm}-${Date.now()}`,
+            source: 'bnet',
+            name: char.name,
+            realm: char.realm,
+            classId: classSlug,
+            specId: specs.length > 0 ? specs[0].id : undefined,
+        }
+        setDeclaredAlts(prev => [...prev, newAlt])
+    }
+
+    const handleAddManualAlt = () => {
+        if (!manualAltClassId) return
+        const newAlt: DeclaredAlt = {
+            id: `manual-${manualAltClassId}-${Date.now()}`,
+            source: 'manual',
+            classId: manualAltClassId,
+            specId: manualAltSpecId || undefined,
+        }
+        setDeclaredAlts(prev => [...prev, newAlt])
+        setManualAltSpecId('')
+    }
+
+    const handleRemoveAlt = (id: string) => {
+        setDeclaredAlts(prev => prev.filter(alt => alt.id !== id))
+    }
+
+    const handleUpdateAltSpec = (id: string, specId: string) => {
+        setDeclaredAlts(prev => prev.map(alt => alt.id === id ? { ...alt, specId } : alt))
+    }
+
+    // Synchronize declaredAlts into step2Form 'alts' string
+    useEffect(() => {
+        const formatted = formatAltsToString(declaredAlts)
+        step2Form.setValue('alts', formatted, { shouldValidate: true })
+    }, [declaredAlts, step2Form])
+
     // Restore draft from localStorage on initial mount
     useEffect(() => {
         if (typeof window === 'undefined') return
@@ -205,6 +301,7 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
             if (draft.step1) step1Form.reset(draft.step1)
             if (draft.step2) step2Form.reset(draft.step2)
             if (draft.step3) step3Form.reset(draft.step3)
+            if (draft.declaredAlts && Array.isArray(draft.declaredAlts)) setDeclaredAlts(draft.declaredAlts)
             if (draft.selectedBnetCharacter) setSelectedBnetCharacter(draft.selectedBnetCharacter)
             if (draft.currentStep && draft.currentStep >= 1 && draft.currentStep <= 4) {
                 setCurrentStep(draft.currentStep)
@@ -216,7 +313,7 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
         }
     }, [step1Form, step2Form, step3Form])
 
-    // Auto-save draft whenever values, step or character change
+    // Auto-save draft whenever values, step, alts or character change
     useEffect(() => {
         if (typeof window === 'undefined') return
 
@@ -246,6 +343,7 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                         step1: s1,
                         step2: s2,
                         step3: s3,
+                        declaredAlts,
                     }
                     localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))
                     setLastSavedAt(new Date())
@@ -273,7 +371,7 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
             sub2.unsubscribe()
             sub3.unsubscribe()
         }
-    }, [currentStep, selectedBnetCharacter, step1Form, step2Form, step3Form])
+    }, [currentStep, selectedBnetCharacter, declaredAlts, step1Form, step2Form, step3Form])
 
     // Warn before accidental window close if form has data
     useEffect(() => {
@@ -328,6 +426,9 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                 commitmentMic: false,
             })
             setSelectedBnetCharacter(null)
+            setDeclaredAlts([])
+            setManualAltClassId('')
+            setManualAltSpecId('')
             setFormData({})
             setCurrentStep(1)
             setDraftRestored(false)
@@ -1036,25 +1137,206 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                                     </div>
                                 )}
 
-                                {/* Raid Alts */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="alts" className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                                            Rerolls prêts pour le raid
-                                        </Label>
-                                        <span className="text-[10px] font-semibold text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                                            Optionnel
-                                        </span>
+                                {/* Rerolls prêts pour le raid */}
+                                <div className="space-y-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                                                Rerolls prêts pour le raid
+                                            </Label>
+                                            <span className="text-[10px] font-semibold text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                                                Optionnel
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-zinc-400 font-medium">
+                                            Personnages viables pour dépanner en raid mythique si besoin
+                                        </p>
                                     </div>
-                                    <p className="text-[11px] text-zinc-400">
-                                        Si vous possédez un ou plusieurs rerolls viables pour dépanner en raid mythique, indiquez-les ici.
-                                    </p>
-                                    <Textarea
-                                        id="alts"
-                                        {...step2Form.register('alts')}
-                                        placeholder="ex: Chaman Restauration 625 ilvl, Moine Maître-brasseur 620 ilvl..."
-                                        className="min-h-[70px] bg-black/40 border-white/5 text-white placeholder:text-zinc-500 rounded-xl p-3 text-xs"
-                                    />
+
+                                    {/* Option 1: Ajouter depuis les personnages Battle.net */}
+                                    {fetchedCharacters.length > 0 && availableBnetAlts.length > 0 && (
+                                        <div className="space-y-2.5 p-3.5 rounded-xl bg-[#0074e0]/10 border border-[#0074e0]/20">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-bold text-[#00AEFF] uppercase tracking-wider block">
+                                                    Vos autres personnages Battle.net ({availableBnetAlts.length})
+                                                </span>
+                                                <span className="text-[10px] text-zinc-400">Cliquez pour ajouter</span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto custom-scrollbar pt-1">
+                                                {availableBnetAlts.map((char, idx) => {
+                                                    const classSlug = getClassIdFromName(char.className)
+                                                    const wowClass = classSlug ? getClassById(classSlug) : null
+                                                    const classColor = wowClass?.color || '#3b82f6'
+
+                                                    return (
+                                                        <button
+                                                            key={`bnet-alt-opt-${char.name}-${char.realm}-${idx}`}
+                                                            type="button"
+                                                            onClick={() => handleAddBnetAlt(char)}
+                                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 hover:border-white/30 text-xs text-white transition-all cursor-pointer group hover:bg-white/10"
+                                                        >
+                                                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: classColor }} />
+                                                            <span className="font-bold group-hover:text-primary transition-colors">{char.name}</span>
+                                                            <span className="text-[10px] text-zinc-400 font-normal">{char.realm}</span>
+                                                            <span className="text-[10px] font-semibold shrink-0" style={{ color: classColor }}>
+                                                                {wowClass?.nameFr || char.className}
+                                                            </span>
+                                                            <Plus className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white ml-0.5" />
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Option 2: Sélecteur Classe + Spécialisation */}
+                                    <div className="space-y-2.5 pt-1">
+                                        <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+                                            {fetchedCharacters.length > 0 ? "Ou ajouter par Classe & Spécialisation" : "Sélectionner par Classe & Spécialisation"}
+                                        </span>
+                                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                                            <div className="sm:col-span-5 space-y-1">
+                                                <span className="text-[10px] text-zinc-400 font-semibold uppercase">Classe</span>
+                                                <Select
+                                                    value={manualAltClassId || undefined}
+                                                    onValueChange={(val) => {
+                                                        setManualAltClassId(val)
+                                                        setManualAltSpecId('')
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="h-10 bg-black/40 border-white/10 text-white rounded-xl text-xs">
+                                                        <SelectValue placeholder="Choisir une classe" />
+                                                    </SelectTrigger>
+                                                    <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl max-h-60">
+                                                        {WOW_CLASSES.map((wc) => (
+                                                            <SelectItem key={wc.id} value={wc.id} className="text-xs">
+                                                                <div className="flex items-center gap-2">
+                                                                    <img
+                                                                        src={`https://render.worldofwarcraft.com/eu/icons/56/${wc.icon}.jpg`}
+                                                                        alt={wc.nameFr}
+                                                                        className="w-4 h-4 rounded object-cover"
+                                                                    />
+                                                                    <span style={{ color: wc.color }} className="font-semibold">{wc.nameFr}</span>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="sm:col-span-5 space-y-1">
+                                                <span className="text-[10px] text-zinc-400 font-semibold uppercase">Spécialisation</span>
+                                                <Select
+                                                    value={manualAltSpecId || undefined}
+                                                    onValueChange={setManualAltSpecId}
+                                                    disabled={!manualAltClassId}
+                                                >
+                                                    <SelectTrigger className="h-10 bg-black/40 border-white/10 text-white rounded-xl text-xs disabled:opacity-40">
+                                                        <SelectValue placeholder={manualAltClassId ? "Toutes ou choisir spé" : "Sélectionnez classe d'abord"} />
+                                                    </SelectTrigger>
+                                                    <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl max-h-60">
+                                                        {manualAltAvailableSpecs.map((ws) => (
+                                                            <SelectItem key={ws.id} value={ws.id} className="text-xs">
+                                                                <div className="flex items-center gap-2">
+                                                                    <img
+                                                                        src={`https://render.worldofwarcraft.com/eu/icons/56/${ws.icon}.jpg`}
+                                                                        alt={ws.nameFr}
+                                                                        className="w-4 h-4 rounded object-cover"
+                                                                    />
+                                                                    <span>{ws.nameFr}</span>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="sm:col-span-2">
+                                                <Button
+                                                    type="button"
+                                                    onClick={handleAddManualAlt}
+                                                    disabled={!manualAltClassId}
+                                                    className="w-full h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider disabled:opacity-40 transition-colors"
+                                                >
+                                                    <Plus className="w-4 h-4 mr-1" />
+                                                    Ajouter
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Liste des rerolls sélectionnés / ajoutés */}
+                                    {declaredAlts.length > 0 && (
+                                        <div className="space-y-2 pt-3 border-t border-white/5">
+                                            <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block">
+                                                Rerolls déclarés ({declaredAlts.length}) :
+                                            </span>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                {declaredAlts.map((alt) => {
+                                                    const wowClass = getClassById(alt.classId)
+                                                    const classSpecs = getSpecsByClass(alt.classId)
+                                                    const selectedSpec = alt.specId ? WOW_SPECS.find(s => s.id === alt.specId) : null
+
+                                                    return (
+                                                        <div
+                                                            key={alt.id}
+                                                            className="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/10 gap-2"
+                                                        >
+                                                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                                {wowClass?.icon && (
+                                                                    <img
+                                                                        src={`https://render.worldofwarcraft.com/eu/icons/56/${selectedSpec?.icon || wowClass.icon}.jpg`}
+                                                                        alt={wowClass.nameFr}
+                                                                        className="w-7 h-7 rounded-lg border border-white/10 object-cover shrink-0"
+                                                                    />
+                                                                )}
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex items-center gap-1.5 truncate">
+                                                                        <span className="text-xs font-bold text-white truncate">
+                                                                            {alt.name || wowClass?.nameFr || alt.classId}
+                                                                        </span>
+                                                                        {alt.realm && (
+                                                                            <span className="text-[10px] text-zinc-400 truncate">({alt.realm})</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        <span className="text-[11px] font-semibold" style={{ color: wowClass?.color }}>
+                                                                            {wowClass?.nameFr}
+                                                                        </span>
+                                                                        <span className="text-zinc-600">·</span>
+                                                                        <Select
+                                                                            value={alt.specId || undefined}
+                                                                            onValueChange={(newSpec) => handleUpdateAltSpec(alt.id, newSpec)}
+                                                                        >
+                                                                            <SelectTrigger className="h-6 px-2 py-0 text-[10px] font-semibold bg-white/5 border-white/10 rounded-md text-zinc-300 w-auto min-w-[90px]">
+                                                                                <SelectValue placeholder="Spécialisation" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl">
+                                                                                {classSpecs.map((cs) => (
+                                                                                    <SelectItem key={cs.id} value={cs.id} className="text-[11px]">
+                                                                                        {cs.nameFr}
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveAlt(alt.id)}
+                                                                className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+                                                                title="Supprimer ce reroll"
+                                                            >
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* WarcraftLogs Link */}
@@ -1121,7 +1403,7 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                             <div className="mb-8">
                                 <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">L'humain derrière le clavier</h1>
                                 <p className="text-zinc-400 font-medium text-xs sm:text-sm">
-                                    Au Jet Set Club, la personnalité et l'esprit d'équipe comptent tout autant que le parse !
+                                    Au Jet Set Club, la personnalité et l'esprit d'équipe comptent tout autant que votre niveau de jeu.
                                 </p>
                             </div>
 
@@ -1415,12 +1697,42 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                                     )}
 
                                     {/* Alts */}
-                                    {step2Form.watch('alts')?.trim() && (
+                                    {(declaredAlts.length > 0 || step2Form.watch('alts')?.trim()) && (
                                         <div>
-                                            <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-0.5">Rerolls déclarés</span>
-                                            <p className="text-zinc-300 text-[11px] leading-relaxed bg-black/30 p-2.5 rounded-xl border border-white/5">
-                                                {step2Form.watch('alts')}
-                                            </p>
+                                            <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1">
+                                                Rerolls déclarés {declaredAlts.length > 0 ? `(${declaredAlts.length})` : ''}
+                                            </span>
+                                            {declaredAlts.length > 0 ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {declaredAlts.map((alt) => {
+                                                        const wc = getClassById(alt.classId)
+                                                        const ws = alt.specId ? WOW_SPECS.find(s => s.id === alt.specId) : null
+                                                        return (
+                                                            <div
+                                                                key={alt.id}
+                                                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs"
+                                                            >
+                                                                {wc && (
+                                                                    <img
+                                                                        src={`https://render.worldofwarcraft.com/eu/icons/56/${ws?.icon || wc.icon}.jpg`}
+                                                                        alt={wc.nameFr}
+                                                                        className="w-4 h-4 rounded object-cover"
+                                                                    />
+                                                                )}
+                                                                <span className="font-bold text-white">
+                                                                    {alt.name ? `${alt.name}${alt.realm ? ` (${alt.realm})` : ''} · ` : ''}
+                                                                    <span style={{ color: wc?.color }}>{wc?.nameFr}</span>
+                                                                    {ws ? ` (${ws.nameFr})` : ''}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="text-zinc-300 text-[11px] leading-relaxed bg-black/30 p-2.5 rounded-xl border border-white/5">
+                                                    {step2Form.watch('alts')}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
 

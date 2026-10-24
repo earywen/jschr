@@ -27,41 +27,17 @@ export function GuildManifestoSheet() {
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
-            {/* Top Compact Pills Bar (placed right under header, takes zero vertical height) */}
+            {/* Top Compact Pills Bar (Schedule & Roster size) */}
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-8 px-4">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] sm:text-xs text-zinc-300 backdrop-blur-md">
+                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] sm:text-xs text-zinc-300 backdrop-blur-md">
                     <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                     <span>Jeudi & Lundi · 20h45 - 23h45</span>
                 </div>
 
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] sm:text-xs text-zinc-300 backdrop-blur-md">
+                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] sm:text-xs text-zinc-300 backdrop-blur-md">
                     <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span>Roster de 24-25 (Rotation équitable)</span>
                 </div>
-
-                {/* Trigger button in the header bar */}
-                <SheetTrigger asChild>
-                    <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-primary/10 border border-primary/30 text-[11px] sm:text-xs font-bold text-primary hover:bg-primary/20 hover:border-primary/50 transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] group"
-                    >
-                        <ShieldCheck className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                        <span>L'Esprit JSC & Manifeste</span>
-                        <ChevronRight className="w-3 h-3 opacity-60 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
-                </SheetTrigger>
-
-                {/* Direct YouTube badge */}
-                <a
-                    href="https://www.youtube.com/@wowJSC/videos"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-[11px] sm:text-xs font-bold text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all shadow-[0_0_12px_rgba(239,68,68,0.12)] group"
-                >
-                    <Youtube className="w-3.5 h-3.5 fill-current group-hover:scale-110 transition-transform" />
-                    <span>Nos boss kills</span>
-                    <ExternalLink className="w-3 h-3 opacity-50" />
-                </a>
             </div>
 
             {/* Fixed Floating Tab docked on the right side of the screen */}
@@ -69,7 +45,7 @@ export function GuildManifestoSheet() {
                 <button
                     type="button"
                     aria-label="Ouvrir le manifeste de la guilde"
-                    className="fixed right-0 top-1/2 -translate-y-1/2 z-40 hidden sm:flex items-center gap-2 py-3 px-2.5 rounded-l-2xl bg-zinc-950/90 border-y border-l border-primary/30 text-zinc-300 hover:text-white hover:border-primary/70 shadow-[0_0_25px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-all cursor-pointer group hover:translate-x-[-4px]"
+                    className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-2 py-3 px-2 sm:px-2.5 rounded-l-2xl bg-zinc-950/95 border-y border-l border-primary/30 text-zinc-300 hover:text-white hover:border-primary/70 shadow-[0_0_25px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-all cursor-pointer group hover:translate-x-[-4px]"
                 >
                     <div className="flex flex-col items-center gap-2">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 border border-primary/30 text-primary group-hover:scale-110 transition-transform">

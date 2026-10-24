@@ -90,7 +90,7 @@ export function ApplyContent({ needs }: ApplyContentProps) {
                         className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-red-400 transition-colors normal-case text-xs"
                     >
                         <Youtube className="w-4 h-4 text-red-500" />
-                        <span>Chaîne YouTube officielle @wowJSC</span>
+                        <span>Notre chaîne Youtube</span>
                     </a>
                     <p>&copy; 2026 JET SET CLUB · TOUS DROITS RÉSERVÉS</p>
                 </div>
