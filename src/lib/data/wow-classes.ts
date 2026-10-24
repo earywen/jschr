@@ -43,7 +43,7 @@ export const WOW_SPECS: WowSpec[] = [
 
     // Paladin
     { id: 'paladin-holy', classId: 'paladin', name: 'Holy', nameFr: 'Sacré', role: 'healer', icon: 'spell_holy_holybolt' },
-    { id: 'paladin-protection', classId: 'paladin', name: 'Protection', nameFr: 'Protection', role: 'tank', icon: 'ability_paladin_protection' },
+    { id: 'paladin-protection', classId: 'paladin', name: 'Protection', nameFr: 'Protection', role: 'tank', icon: 'spell_holy_devotionaura' },
     { id: 'paladin-retribution', classId: 'paladin', name: 'Retribution', nameFr: 'Vindicte', role: 'dps', icon: 'spell_holy_auraoflight' },
 
     // Hunter
@@ -82,7 +82,7 @@ export const WOW_SPECS: WowSpec[] = [
     { id: 'warlock-destruction', classId: 'warlock', name: 'Destruction', nameFr: 'Destruction', role: 'dps', icon: 'spell_shadow_rainoffire' },
 
     // Monk
-    { id: 'monk-brewmaster', classId: 'monk', name: 'Brewmaster', nameFr: 'Maître brasseur', role: 'tank', icon: 'spell_monk_brewmaster' },
+    { id: 'monk-brewmaster', classId: 'monk', name: 'Brewmaster', nameFr: 'Maître brasseur', role: 'tank', icon: 'spell_monk_brewmaster_spec' },
     { id: 'monk-mistweaver', classId: 'monk', name: 'Mistweaver', nameFr: 'Tisse-brume', role: 'healer', icon: 'spell_monk_mistweaver_spec' },
     { id: 'monk-windwalker', classId: 'monk', name: 'Windwalker', nameFr: 'Marche-vent', role: 'dps', icon: 'spell_monk_windwalker_spec' },
 

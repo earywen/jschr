@@ -1286,8 +1286,13 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                                                                 {wowClass?.icon && (
                                                                     <img
                                                                         src={`https://render.worldofwarcraft.com/eu/icons/56/${selectedSpec?.icon || wowClass.icon}.jpg`}
-                                                                        alt={wowClass.nameFr}
-                                                                        className="w-7 h-7 rounded-lg border border-white/10 object-cover shrink-0"
+                                                                        alt={selectedSpec?.nameFr || wowClass.nameFr}
+                                                                        className="w-8 h-8 rounded-lg border border-white/10 object-cover shrink-0"
+                                                                        onError={(e) => {
+                                                                            if (wowClass?.icon) {
+                                                                                (e.target as HTMLImageElement).src = `https://render.worldofwarcraft.com/eu/icons/56/${wowClass.icon}.jpg`
+                                                                            }
+                                                                        }}
                                                                     />
                                                                 )}
                                                                 <div className="min-w-0 flex-1">
@@ -1299,7 +1304,7 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                                                                             <span className="text-[10px] text-zinc-400 truncate">({alt.realm})</span>
                                                                         )}
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                    <div className="flex flex-wrap items-center gap-2 mt-1">
                                                                         <span className="text-[11px] font-semibold" style={{ color: wowClass?.color }}>
                                                                             {wowClass?.nameFr}
                                                                         </span>
@@ -1308,7 +1313,7 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                                                                             value={alt.specId || undefined}
                                                                             onValueChange={(newSpec) => handleUpdateAltSpec(alt.id, newSpec)}
                                                                         >
-                                                                            <SelectTrigger className="h-6 px-2 py-0 text-[10px] font-semibold bg-white/5 border-white/10 rounded-md text-zinc-300 w-auto min-w-[90px]">
+                                                                            <SelectTrigger className="h-6 px-2.5 py-0 text-[10px] font-semibold bg-white/5 border-white/10 rounded-md text-zinc-300 w-auto min-w-[115px] sm:min-w-[125px]">
                                                                                 <SelectValue placeholder="Spécialisation" />
                                                                             </SelectTrigger>
                                                                             <SelectContent position="popper" className="bg-zinc-900 border-white/10 z-[100] rounded-xl">
@@ -1473,21 +1478,23 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
                                     <div className="space-y-3">
                                         {/* Commitment 1 */}
                                         <label className={cn(
-                                            "flex items-start gap-3 p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer text-left",
+                                            "flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer text-left",
                                             step3Form.watch('commitmentSchedule')
                                                 ? "bg-primary/10 border-primary/40 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]"
                                                 : "bg-black/30 border-white/5 hover:border-white/15"
                                         )}>
-                                            <Checkbox
-                                                checked={step3Form.watch('commitmentSchedule')}
-                                                onCheckedChange={(checked) => step3Form.setValue('commitmentSchedule', checked === true, { shouldValidate: true })}
-                                                className="mt-0.5"
-                                            />
-                                            <div className="space-y-1 text-xs">
-                                                <span className="font-bold text-white block">
+                                            <div className="flex items-center justify-center shrink-0">
+                                                <Checkbox
+                                                    checked={step3Form.watch('commitmentSchedule')}
+                                                    onCheckedChange={(checked) => step3Form.setValue('commitmentSchedule', checked === true, { shouldValidate: true })}
+                                                    className="size-5 rounded-md"
+                                                />
+                                            </div>
+                                            <div className="space-y-1 text-xs flex-1">
+                                                <span className="font-bold text-white text-sm block">
                                                     Disponibilité garantie · Jeudi & Lundi (20h45 - 23h45)
                                                 </span>
-                                                <span className="text-zinc-400 block text-[11px] leading-relaxed">
+                                                <span className="text-zinc-400 block text-xs leading-relaxed">
                                                     Je confirme être présent et ponctuel pour nos 2 soirs officiels hebdomadaires (pause de 10 min à 22h, aucun soir bonus mythique imprévu).
                                                 </span>
                                             </div>
@@ -1498,21 +1505,23 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
 
                                         {/* Commitment 2 */}
                                         <label className={cn(
-                                            "flex items-start gap-3 p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer text-left",
+                                            "flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer text-left",
                                             step3Form.watch('commitmentRoster')
                                                 ? "bg-primary/10 border-primary/40 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]"
                                                 : "bg-black/30 border-white/5 hover:border-white/15"
                                         )}>
-                                            <Checkbox
-                                                checked={step3Form.watch('commitmentRoster')}
-                                                onCheckedChange={(checked) => step3Form.setValue('commitmentRoster', checked === true, { shouldValidate: true })}
-                                                className="mt-0.5"
-                                            />
-                                            <div className="space-y-1 text-xs">
-                                                <span className="font-bold text-white block">
+                                            <div className="flex items-center justify-center shrink-0">
+                                                <Checkbox
+                                                    checked={step3Form.watch('commitmentRoster')}
+                                                    onCheckedChange={(checked) => step3Form.setValue('commitmentRoster', checked === true, { shouldValidate: true })}
+                                                    className="size-5 rounded-md"
+                                                />
+                                            </div>
+                                            <div className="space-y-1 text-xs flex-1">
+                                                <span className="font-bold text-white text-sm block">
                                                     Rotation équitable sur le roster (24-25 joueurs)
                                                 </span>
-                                                <span className="text-zinc-400 block text-[11px] leading-relaxed">
+                                                <span className="text-zinc-400 block text-xs leading-relaxed">
                                                     J'accepte le principe d'une rotation équitable sur le palier pour garantir l'engagement et le temps de jeu de l'ensemble des joueurs.
                                                 </span>
                                             </div>
@@ -1523,21 +1532,23 @@ export function ApplicationWizard({ onSubmit, needs }: WizardProps) {
 
                                         {/* Commitment 3 */}
                                         <label className={cn(
-                                            "flex items-start gap-3 p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer text-left",
+                                            "flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer text-left",
                                             step3Form.watch('commitmentMic')
                                                 ? "bg-primary/10 border-primary/40 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]"
                                                 : "bg-black/30 border-white/5 hover:border-white/15"
                                         )}>
-                                            <Checkbox
-                                                checked={step3Form.watch('commitmentMic')}
-                                                onCheckedChange={(checked) => step3Form.setValue('commitmentMic', checked === true, { shouldValidate: true })}
-                                                className="mt-0.5"
-                                            />
-                                            <div className="space-y-1 text-xs">
-                                                <span className="font-bold text-white block">
+                                            <div className="flex items-center justify-center shrink-0">
+                                                <Checkbox
+                                                    checked={step3Form.watch('commitmentMic')}
+                                                    onCheckedChange={(checked) => step3Form.setValue('commitmentMic', checked === true, { shouldValidate: true })}
+                                                    className="size-5 rounded-md"
+                                                />
+                                            </div>
+                                            <div className="space-y-1 text-xs flex-1">
+                                                <span className="font-bold text-white text-sm block">
                                                     Micro opérationnel & Communication active
                                                 </span>
-                                                <span className="text-zinc-400 block text-[11px] leading-relaxed">
+                                                <span className="text-zinc-400 block text-xs leading-relaxed">
                                                     Je dispose d'un micro en bon état de fonctionnement et je m'engage à communiquer sereinement et constructivement en vocal en raid.
                                                 </span>
                                             </div>
