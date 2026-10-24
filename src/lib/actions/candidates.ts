@@ -163,7 +163,7 @@ export async function submitApplication(
         parsed.data.characterName,
         getClassNameFromId(parsed.data.classId),
         mainSpecDisplayName,
-        consolidatedRaidExp,
+        parsed.data.raidExperience,
         parsed.data.aboutMe,
         parsed.data.whyJSC,
         parsed.data.motivation,
@@ -177,6 +177,7 @@ export async function submitApplication(
             avatarUrl: parsed.data.avatarUrl,
             secondarySpecs: secondarySpecsNames,
             realm: parsed.data.realm,
+            alts: parsed.data.alts,
         }
     )
 

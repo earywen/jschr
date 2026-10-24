@@ -1,5 +1,11 @@
 interface DiscordEmbed {
+    author?: {
+        name: string
+        icon_url?: string
+        url?: string
+    }
     title: string
+    url?: string
     description?: string
     color?: number
     fields?: Array<{
@@ -250,112 +256,130 @@ export async function notifyNewCandidate(
         avatarUrl?: string | null
         secondarySpecs?: string[] | null
         realm?: string | null
+        alts?: string | null
     }
 ): Promise<string | null> {
     const classColor = CLASS_COLORS[className.toLowerCase().replace(/\s/g, '')] || 0x5865F2
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`
 
-    // Build description with all text content
-    const realmDisplay = data?.realm ? ` (${data.realm})` : ''
-    let description = `**${candidateName}**${realmDisplay} a postulé pour rejoindre la guilde.\n\n`
+    const formatQuote = (text: string) =>
+        text
+            .trim()
+            .split('\n')
+            .map(line => line.trim().length > 0 ? `> ${line}` : '>')
+            .join('\n')
 
-    // Add text sections to description (more compact, uses full width)
-    if (raidExperience) {
-        description += `**Expérience XP / Guildes**\n${raidExperience}\n\n`
+    let description = ''
+
+    if (raidExperience?.trim()) {
+        description += `### Expérience Raid\n${formatQuote(raidExperience)}\n\n`
     }
 
-    if (aboutMe) {
-        description += `**À propos**\n${aboutMe}\n\n`
+    if (data?.alts?.trim()) {
+        const altItems = data.alts.split(',').map(a => a.trim()).filter(Boolean)
+        if (altItems.length > 0) {
+            description += `### Rerolls\n`
+            for (const item of altItems) {
+                description += `> • ${item}\n`
+            }
+            description += `\n`
+        }
     }
 
-    if (whyJSC) {
-        description += `**Pourquoi JSC ?**\n${whyJSC}\n\n`
+    const personalParts: string[] = []
+    if (aboutMe?.trim()) {
+        personalParts.push(aboutMe.trim())
+    }
+    if (whyJSC?.trim()) {
+        personalParts.push(`**Pourquoi le JSC :** ${whyJSC.trim()}`)
+    }
+    if (motivation?.trim()) {
+        personalParts.push(`*« ${motivation.trim()} »*`)
     }
 
-    if (motivation) {
-        description += `**Mot de la fin**\n${motivation}\n\n`
+    if (personalParts.length > 0) {
+        description += `### À propos & Motivations\n${formatQuote(personalParts.join('\n\n'))}\n\n`
     }
+
+    // Links section with subtle markdown
+    const linksList: string[] = []
+    if (data?.wlogsLink) linksList.push(`[WarcraftLogs](${data.wlogsLink})`)
+    if (data?.screenshotUrl) linksList.push(`[Interface UI](${data.screenshotUrl})`)
+    linksList.push(`[Fiche Recrutement](${dashboardLink})`)
+
+    description += `### Liens\n${linksList.join(' • ')}\n-# Profil vérifié • Engagements charte validés`
 
     // Trim description if too long (Discord limit: 4096 chars)
     if (description.length > 4000) {
         description = description.substring(0, 3997) + '...'
     }
 
+    // Perfectly balanced 2x3 inline fields grid
     const fields: DiscordEmbed['fields'] = []
 
-    // Stats row - all inline for horizontal layout
+    // Row 1: Spec Principale, Spé(s) Secondaire(s), Serveur
     fields.push(
         {
-            name: 'Classe',
-            value: className,
+            name: 'Spé Principale',
+            value: `**${specName}**`,
             inline: true,
         },
         {
-            name: 'Spé Principale',
-            value: `⭐ **${specName}**`,
+            name: 'Spé(s) Secondaire(s)',
+            value: (data?.secondarySpecs && data.secondarySpecs.length > 0)
+                ? data.secondarySpecs.join(', ')
+                : 'Aucune',
+            inline: true,
+        },
+        {
+            name: 'Serveur',
+            value: data?.realm || 'Non précisé',
             inline: true,
         }
     )
 
-    if (data?.secondarySpecs && data.secondarySpecs.length > 0) {
-        fields.push({
-            name: 'Spé(s) Secondaire(s)',
-            value: data.secondarySpecs.join(', '),
-            inline: true,
-        })
-    }
+    // Row 2: Niveau & Raid, Best Avg Logs, Score MM+
+    const ilvlStr = data?.ilvl ? `${data.ilvl} ilvl` : null
+    const raidStr = data?.progress ? data.progress : null
+    const gearProgressStr = [ilvlStr, raidStr].filter(Boolean).map(s => `\`${s}\``).join(' • ')
 
-    if (data?.ilvl) {
-        fields.push({
-            name: 'iLvl',
-            value: `**${data.ilvl}**`,
+    fields.push(
+        {
+            name: 'Niveau & Raid',
+            value: gearProgressStr || 'Non renseigné',
             inline: true,
-        })
-    }
-
-    if (data?.progress) {
-        fields.push({
-            name: 'Raid',
-            value: `**${data.progress}**`,
+        },
+        {
+            name: 'Best Avg Logs',
+            value: (data?.bestPerfAvg !== undefined && data?.bestPerfAvg !== null)
+                ? `${getPerfEmoji(data.bestPerfAvg, 'parse')} **${Math.round(data.bestPerfAvg)}%**`
+                : 'N/A',
             inline: true,
-        })
-    }
-
-    if (data?.bestPerfAvg !== undefined && data?.bestPerfAvg !== null) {
-        fields.push({
-            name: 'Best Avg',
-            value: `${getPerfEmoji(data.bestPerfAvg, 'parse')} **${Math.round(data.bestPerfAvg)}%**`,
-            inline: true,
-        })
-    }
-
-    if (data?.score) {
-        fields.push({
+        },
+        {
             name: 'Score MM+',
-            value: `${getPerfEmoji(data.score, 'score')} **${Math.round(data.score)}**`,
+            value: (data?.score)
+                ? `${getPerfEmoji(data.score, 'score')} **${Math.round(data.score)}**`
+                : 'N/A',
             inline: true,
-        })
-    }
+        }
+    )
 
-    // Add links at the end
-    let linksValue = `[Dashboard](${dashboardLink})`
-    if (data?.wlogsLink) linksValue += ` • [WarcraftLogs](${data.wlogsLink})`
-    if (data?.screenshotUrl) linksValue += ` • [Voir l'UI](${data.screenshotUrl})`
-
-    fields.push({
-        name: 'Liens',
-        value: linksValue,
-        inline: false,
-    })
-
+    const realmSuffix = data?.realm ? ` — ${data.realm}` : ''
     const embed: DiscordEmbed = {
-        title: 'Nouvelle Candidature',
+        author: {
+            name: 'Jet Set Club • Recrutement',
+            icon_url: 'https://render.worldofwarcraft.com/eu/icons/56/achievement_boss_illidan.jpg',
+            url: appUrl,
+        },
+        title: `Candidature de ${candidateName}${realmSuffix}`,
+        url: dashboardLink,
         description: description,
         color: classColor,
         fields: fields,
         footer: {
-            text: 'JSC HR - Recrutement',
+            text: 'JSC HR • Vote ouvert au roster',
         },
         timestamp: new Date().toISOString(),
     }
@@ -367,7 +391,7 @@ export async function notifyNewCandidate(
         }
     }
 
-    // Create Action Row with Buttons
+    // Create Action Row with Buttons (3 vote buttons + 1 direct link button)
     const components = [
         {
             type: 1, // Action Row
@@ -392,6 +416,12 @@ export async function notifyNewCandidate(
                     label: 'Contre',
                     emoji: { name: '🛑' },
                     custom_id: `vote:${candidateId}:no`
+                },
+                {
+                    type: 2, // Button
+                    style: 5, // Link Button
+                    label: 'Fiche Complète',
+                    url: dashboardLink
                 }
             ]
         }
