@@ -95,6 +95,7 @@ export const WOW_SPECS: WowSpec[] = [
     // Demon Hunter
     { id: 'demonhunter-havoc', classId: 'demon-hunter', name: 'Havoc', nameFr: 'Dévastation', role: 'dps', icon: 'ability_demonhunter_specdps' },
     { id: 'demonhunter-vengeance', classId: 'demon-hunter', name: 'Vengeance', nameFr: 'Vengeance', role: 'tank', icon: 'ability_demonhunter_spectank' },
+    { id: 'demonhunter-devourer', classId: 'demon-hunter', name: 'Devourer', nameFr: 'Dévoration', role: 'dps', icon: 'classicon_demonhunter_void' },
 
     // Evoker
     { id: 'evoker-devastation', classId: 'evoker', name: 'Devastation', nameFr: 'Dévastation', role: 'dps', icon: 'classicon_evoker_devastation' },
