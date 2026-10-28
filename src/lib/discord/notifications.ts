@@ -263,17 +263,10 @@ export async function notifyNewCandidate(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`
 
-    const formatQuote = (text: string) =>
-        text
-            .trim()
-            .split('\n')
-            .map(line => line.trim().length > 0 ? `> ${line}` : '>')
-            .join('\n')
-
     let description = ''
 
     if (raidExperience?.trim()) {
-        description += `### Expérience Raid\n${formatQuote(raidExperience)}\n\n`
+        description += `**Expérience Raid**\n${raidExperience.trim()}\n\n`
     }
 
     if (data?.alts?.trim()) {
@@ -286,7 +279,7 @@ export async function notifyNewCandidate(
                 if (regMatch) region = regMatch[1].toLowerCase()
             }
 
-            description += `### Rerolls\n`
+            description += `**Rerolls**\n`
             for (const item of altItems) {
                 // Match format: CharacterName (Realm) - Class (Spec)
                 const match = item.match(/^([^\(\)]+?)\s*\(([^()]+)\)\s*[-—]\s*(.+)$/)
@@ -302,37 +295,34 @@ export async function notifyNewCandidate(
                         .replace(/^-+|-+$/g, '')
                     const nameSlug = encodeURIComponent(charName.toLowerCase())
                     const wlogsUrl = `https://www.warcraftlogs.com/character/${region}/${realmSlug}/${nameSlug}`
-                    description += `> • [${charName}](${wlogsUrl}) *(${realmName})* — ${classSpec}\n`
+                    description += `• [${charName}](${wlogsUrl}) *(${realmName})* — ${classSpec}\n`
                 } else {
-                    description += `> • ${item}\n`
+                    description += `• ${item}\n`
                 }
             }
             description += `\n`
         }
     }
 
-    const personalParts: string[] = []
     if (aboutMe?.trim()) {
-        personalParts.push(aboutMe.trim())
+        description += `**À propos**\n${aboutMe.trim()}\n\n`
     }
+
     if (whyJSC?.trim()) {
-        personalParts.push(`**Pourquoi le JSC :** ${whyJSC.trim()}`)
+        description += `**Pourquoi le JSC ?**\n${whyJSC.trim()}\n\n`
     }
+
     if (motivation?.trim()) {
-        personalParts.push(`*« ${motivation.trim()} »*`)
+        description += `**Mot de la fin**\n${motivation.trim()}\n\n`
     }
 
-    if (personalParts.length > 0) {
-        description += `### À propos & Motivations\n${formatQuote(personalParts.join('\n\n'))}\n\n`
-    }
-
-    // Links section with subtle markdown
+    // Links section
     const linksList: string[] = []
     if (data?.wlogsLink) linksList.push(`[WarcraftLogs](${data.wlogsLink})`)
     if (data?.screenshotUrl) linksList.push(`[Interface UI](${data.screenshotUrl})`)
     linksList.push(`[Fiche Recrutement](${dashboardLink})`)
 
-    description += `### Liens\n${linksList.join(' • ')}`
+    description += `**Liens**\n${linksList.join(' • ')}`
 
     // Trim description if too long (Discord limit: 4096 chars)
     if (description.length > 4000) {
