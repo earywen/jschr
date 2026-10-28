@@ -279,9 +279,33 @@ export async function notifyNewCandidate(
     if (data?.alts?.trim()) {
         const altItems = data.alts.split(',').map(a => a.trim()).filter(Boolean)
         if (altItems.length > 0) {
+            // Determine region for WarcraftLogs links (default 'eu')
+            let region = 'eu'
+            if (data?.wlogsLink) {
+                const regMatch = data.wlogsLink.match(/warcraftlogs\.com\/character\/(eu|us|kr|tw|cn)/i)
+                if (regMatch) region = regMatch[1].toLowerCase()
+            }
+
             description += `### Rerolls\n`
             for (const item of altItems) {
-                description += `> • ${item}\n`
+                // Match format: CharacterName (Realm) - Class (Spec)
+                const match = item.match(/^([^\(\)]+?)\s*\(([^()]+)\)\s*[-—]\s*(.+)$/)
+                if (match) {
+                    const charName = match[1].trim()
+                    const realmName = match[2].trim()
+                    const classSpec = match[3].trim()
+                    const realmSlug = realmName
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-+|-+$/g, '')
+                    const nameSlug = encodeURIComponent(charName.toLowerCase())
+                    const wlogsUrl = `https://www.warcraftlogs.com/character/${region}/${realmSlug}/${nameSlug}`
+                    description += `> • [${charName}](${wlogsUrl}) *(${realmName})* — ${classSpec}\n`
+                } else {
+                    description += `> • ${item}\n`
+                }
             }
             description += `\n`
         }
@@ -308,7 +332,7 @@ export async function notifyNewCandidate(
     if (data?.screenshotUrl) linksList.push(`[Interface UI](${data.screenshotUrl})`)
     linksList.push(`[Fiche Recrutement](${dashboardLink})`)
 
-    description += `### Liens\n${linksList.join(' • ')}\n-# Profil vérifié • Engagements charte validés`
+    description += `### Liens\n${linksList.join(' • ')}`
 
     // Trim description if too long (Discord limit: 4096 chars)
     if (description.length > 4000) {
@@ -339,14 +363,14 @@ export async function notifyNewCandidate(
         }
     )
 
-    // Row 2: Niveau & Raid, Best Avg Logs, Score MM+
+    // Row 2: Ilvl & Progress, Best Avg Logs, Score MM+
     const ilvlStr = data?.ilvl ? `${data.ilvl} ilvl` : null
     const raidStr = data?.progress ? data.progress : null
     const gearProgressStr = [ilvlStr, raidStr].filter(Boolean).map(s => `\`${s}\``).join(' • ')
 
     fields.push(
         {
-            name: 'Niveau & Raid',
+            name: 'Ilvl & Progress',
             value: gearProgressStr || 'Non renseigné',
             inline: true,
         },

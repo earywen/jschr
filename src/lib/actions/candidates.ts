@@ -133,7 +133,10 @@ export async function submitApplication(
 
     if (parsed.data.warcraftlogsLink) {
         try {
-            const wlogsData = await fetchWarcraftLogsData(parsed.data.warcraftlogsLink)
+            const wlogsData = await fetchWarcraftLogsData(parsed.data.warcraftlogsLink, {
+                role: mainSpecObj?.role,
+                specName: specName,
+            })
             wlogsStats = {
                 ilvl: wlogsData.ilvl,
                 score: wlogsData.mythicPlusScore,

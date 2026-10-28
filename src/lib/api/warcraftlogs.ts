@@ -82,14 +82,22 @@ async function getWarcraftLogsToken(): Promise<string | null> {
 
 // Parse WarcraftLogs URL to extract character info
 export function parseWarcraftLogsUrl(url: string): WarcraftLogsCharacter | null {
-    // Format: https://classic.warcraftlogs.com/character/eu/sulfuron/charactername
-    const match = url.match(/warcraftlogs\.com\/character\/(eu|us|kr|tw|cn)\/([^\/]+)\/([^\/\?]+)/i)
+    // Format: https://www.warcraftlogs.com/character/eu/sulfuron/charactername
+    const match = url.match(/warcraftlogs\.com\/character\/(eu|us|kr|tw|cn)\/([^\/]+)\/([^\/\?#]+)/i)
 
     if (!match) return null
 
+    const rawSlug = decodeURIComponent(match[2])
+    const serverSlug = rawSlug
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+
     return {
-        name: match[3],
-        serverSlug: match[2],
+        name: decodeURIComponent(match[3]).trim(),
+        serverSlug,
         serverRegion: match[1].toLowerCase(),
     }
 }
@@ -104,10 +112,76 @@ function getPercentileColor(percentile: number): string {
     return '#666666' // Gray
 }
 
+// Cache active raid and M+ zones to avoid fetching worldData on every request
+let cachedActiveZones: { raidZoneId: number; mplusZoneId: number; timestamp: number } | null = null
+
+async function getActiveZones(token: string): Promise<{ raidZoneId: number; mplusZoneId: number }> {
+    if (cachedActiveZones && Date.now() - cachedActiveZones.timestamp < 3600 * 1000) {
+        return { raidZoneId: cachedActiveZones.raidZoneId, mplusZoneId: cachedActiveZones.mplusZoneId }
+    }
+
+    try {
+        const query = `
+            query {
+                worldData {
+                    zones {
+                        id
+                        name
+                        frozen
+                    }
+                }
+            }
+        `
+        const response = await fetch('https://www.warcraftlogs.com/api/v2/client', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ query }),
+        })
+
+        if (response.ok) {
+            const data = await response.json()
+            const allZones: Array<{ id: number; name: string; frozen?: boolean }> = data?.data?.worldData?.zones || []
+            const unfrozen = allZones.filter(z => !z.frozen)
+
+            const mplusZone = unfrozen.find(z => z.name.toLowerCase().includes('mythic+')) ||
+                [...allZones].filter(z => z.name.toLowerCase().includes('mythic+')).sort((a, b) => b.id - a.id)[0]
+
+            const raidZone = unfrozen.find(z =>
+                !z.name.toLowerCase().includes('mythic+') &&
+                !z.name.toLowerCase().includes('delve') &&
+                !z.name.toLowerCase().includes('torghast')
+            ) || [...allZones].filter(z =>
+                !z.name.toLowerCase().includes('mythic+') &&
+                !z.name.toLowerCase().includes('delve')
+            ).sort((a, b) => b.id - a.id)[0]
+
+            if (raidZone && mplusZone) {
+                cachedActiveZones = {
+                    raidZoneId: raidZone.id,
+                    mplusZoneId: mplusZone.id,
+                    timestamp: Date.now(),
+                }
+                return { raidZoneId: raidZone.id, mplusZoneId: mplusZone.id }
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching active zones from WarcraftLogs:', err)
+    }
+
+    // Default fallback to Midnight current tier
+    return { raidZoneId: 53, mplusZoneId: 55 }
+}
 
 // Query WarcraftLogs GraphQL API
 export async function fetchWarcraftLogsData(
-    warcraftlogsUrl: string
+    warcraftlogsUrl: string,
+    options?: {
+        role?: 'tank' | 'healer' | 'dps'
+        specName?: string
+    }
 ): Promise<WarcraftLogsData> {
     const character = parseWarcraftLogsUrl(warcraftlogsUrl)
 
@@ -139,17 +213,18 @@ export async function fetchWarcraftLogsData(
         }
     }
 
-    // Use zoneRankings with aliases to get both Raid (zone 44) and Mythic+ (zone 45) data
-    // Zone 44: Manaforge Omega (Current Raid - Season 3)
-    // Zone 45: Season 3 Mythic+
+    const activeZones = await getActiveZones(token)
+
+    // Dynamic query using current active raid and M+ zones
     const query = `
-    query CharacterData($name: String!, $serverSlug: String!, $serverRegion: String!) {
+    query CharacterData($name: String!, $serverSlug: String!, $serverRegion: String!, $raidZoneId: Int!, $mplusZoneId: Int!) {
       characterData {
         character(name: $name, serverSlug: $serverSlug, serverRegion: $serverRegion) {
           name
           classID
-          mythicPlusScores: zoneRankings(zoneID: 45, metric: playerscore)
-          raidRankings: zoneRankings(zoneID: 44)
+          raidRankingsDps: zoneRankings(zoneID: $raidZoneId, metric: dps)
+          raidRankingsHps: zoneRankings(zoneID: $raidZoneId, metric: hps)
+          mythicPlusScores: zoneRankings(zoneID: $mplusZoneId, metric: playerscore)
         }
       }
     }
@@ -168,6 +243,8 @@ export async function fetchWarcraftLogsData(
                     name: character.name,
                     serverSlug: character.serverSlug,
                     serverRegion: character.serverRegion.toUpperCase(),
+                    raidZoneId: activeZones.raidZoneId,
+                    mplusZoneId: activeZones.mplusZoneId,
                 },
             }),
         })
@@ -217,8 +294,22 @@ export async function fetchWarcraftLogsData(
             }
         }
 
-        // Raid Data
-        const raidRankings = characterData?.raidRankings as WLogsRaidRankings | undefined
+        // Determine raidRankings (HPS for healers, DPS for others, or auto-detect based on data)
+        const isHealer = options?.role === 'healer'
+        let raidRankings = isHealer
+            ? (characterData.raidRankingsHps || characterData.raidRankingsDps)
+            : (characterData.raidRankingsDps || characterData.raidRankingsHps)
+
+        if (!options?.role) {
+            const hpsAvg = characterData.raidRankingsHps?.bestPerformanceAverage
+            const dpsAvg = characterData.raidRankingsDps?.bestPerformanceAverage
+            if (hpsAvg && !dpsAvg) {
+                raidRankings = characterData.raidRankingsHps
+            } else if (dpsAvg && !hpsAvg) {
+                raidRankings = characterData.raidRankingsDps
+            }
+        }
+
         const bestPerfAvg = raidRankings?.bestPerformanceAverage || null
         const medianPerfAvg = raidRankings?.medianPerformanceAverage || null
 
@@ -230,7 +321,7 @@ export async function fetchWarcraftLogsData(
             // Calculate iLvl (max of all bestRank.ilvl)
             const ilvls = raidRankings.rankings
                 .map((r: WLogsRanking) => r.bestRank?.ilvl)
-                .filter((v): v is number => typeof v === 'number' && v > 0)
+                .filter((v: number | undefined | null): v is number => typeof v === 'number' && v > 0)
 
             if (ilvls.length > 0) {
                 ilvl = Math.max(...ilvls)
@@ -238,7 +329,7 @@ export async function fetchWarcraftLogsData(
 
             // Calculate Progress (killed bosses)
             const kills = raidRankings.rankings.filter((r: WLogsRanking) => (r.totalKills ?? 0) > 0).length
-            const total = raidRankings.rankings.length // Assume rankings list covers all bosses
+            const total = raidRankings.rankings.length
 
             // Difficulty text
             let diffText = ''
@@ -246,12 +337,17 @@ export async function fetchWarcraftLogsData(
             else if (raidRankings.difficulty === 4) diffText = '(HM)'
             else if (raidRankings.difficulty === 3) diffText = '(NM)'
 
-            raidProgress = `${kills}/${total} ${diffText}`.trim()
+            if (total > 0 && kills > 0) {
+                raidProgress = `${kills}/${total} ${diffText}`.trim()
+            } else if (total > 0) {
+                raidProgress = `0/${total}`
+            }
         }
 
         // Mythic+ Data
-        const mPlusRankings = (characterData?.mythicPlusScores as WLogsMythicPlusScores | undefined)?.rankings
-        let mythicPlusScore = null
+        const mPlusData = characterData?.mythicPlusScores
+        const mPlusRankings = mPlusData?.rankings
+        let mythicPlusScore: number | null = null
 
         if (mPlusRankings && Array.isArray(mPlusRankings) && mPlusRankings.length > 0) {
             const totalPoints = mPlusRankings.reduce((sum: number, ranking: WLogsRanking) => {
@@ -260,16 +356,27 @@ export async function fetchWarcraftLogsData(
             }, 0)
 
             if (totalPoints > 0) {
-                mythicPlusScore = totalPoints
+                mythicPlusScore = Math.round(totalPoints)
+            }
+        }
+
+        // Fallback to allStars array if totalPoints was 0
+        if (!mythicPlusScore && mPlusData?.allStars && Array.isArray(mPlusData.allStars)) {
+            const allStarPoints = mPlusData.allStars.map((a: any) => a.points || 0)
+            if (allStarPoints.length > 0) {
+                const maxScore = Math.max(...allStarPoints)
+                if (maxScore > 0) {
+                    mythicPlusScore = Math.round(maxScore)
+                }
             }
         }
 
         const color = bestPerfAvg ? getPercentileColor(bestPerfAvg) : '#666666'
 
         return {
-            bestPerfAvg: bestPerfAvg ? Math.round(bestPerfAvg) : null,
-            medianPerfAvg: medianPerfAvg ? Math.round(medianPerfAvg) : null,
-            mythicPlusScore: mythicPlusScore ? Math.round(mythicPlusScore) : null,
+            bestPerfAvg: bestPerfAvg ? Math.round(bestPerfAvg * 10) / 10 : null,
+            medianPerfAvg: medianPerfAvg ? Math.round(medianPerfAvg * 10) / 10 : null,
+            mythicPlusScore,
             ilvl,
             raidProgress,
             bestParses: [],
