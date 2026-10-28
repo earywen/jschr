@@ -174,7 +174,10 @@ export async function POST(req: NextRequest) {
                 });
             }
 
-            // 4. Respond with updated message (Update buttons)
+            // 4. Respond with updated message (Update buttons including Link Button)
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`;
+
             return NextResponse.json({
                 type: 7, // InteractionResponseType.UPDATE_MESSAGE
                 data: {
@@ -202,6 +205,12 @@ export async function POST(req: NextRequest) {
                                     label: `Contre (${counts.no})`,
                                     emoji: { name: '🛑' },
                                     custom_id: `vote:${candidateId}:no`
+                                },
+                                {
+                                    type: 2, // Button
+                                    style: 5, // Link
+                                    label: 'Fiche Complète',
+                                    url: dashboardLink
                                 }
                             ]
                         }

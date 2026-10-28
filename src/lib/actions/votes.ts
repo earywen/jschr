@@ -13,8 +13,11 @@ export interface CastVoteResult {
     error?: string
 }
 
-// Helper to create vote button components with counts
+// Helper to create vote button components with counts and the Link Button
 function createVoteButtons(candidateId: string, counts: { yes: number; neutral: number; no: number }) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const dashboardLink = `${appUrl}/dashboard/candidates/${candidateId}`
+
     return [
         {
             type: 1, // Action Row
@@ -39,6 +42,12 @@ function createVoteButtons(candidateId: string, counts: { yes: number; neutral: 
                     label: `Contre (${counts.no})`,
                     emoji: { name: '🛑' },
                     custom_id: `vote:${candidateId}:no`
+                },
+                {
+                    type: 2, // Button
+                    style: 5, // Link
+                    label: 'Fiche Complète',
+                    url: dashboardLink
                 }
             ]
         }
